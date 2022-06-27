@@ -85,8 +85,19 @@ parallel -j 1 -k --line-buffer '
 mkdir -p ~/data/mrna-structure/PARS10
 cd ~/data/mrna-structure/PARS10
 
-perl ~/Scripts/download/list.pl -u http://genie.weizmann.ac.il/pubs/PARS10/
-perl ~/Scripts/download/download.pl -i pubs_PARS10.yml
+for F in \
+    "sce_genes.fasta.gz" \
+    "sce_transcriptome_global.tab.gz" \
+    "sce_transcriptome_local.tab.gz" \
+    "sce_V1.tab.gz" \
+    "sce_S1.tab.gz" \
+    "sce_Score.tab.gz" \
+    "sce_genes_folded.tab.gz" \
+    "sce_peak_overlap.tab.gz" \
+    ; do
+    >&2 echo -e "\n==> ${F}\n"
+    curl -LO "https://genie.weizmann.ac.il/pubs/PARS10/data/${F}"
+done
 
 find . -name "*.gz" |
     parallel -j 1 'gzip -dcf {} > {.}'
