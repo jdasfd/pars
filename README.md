@@ -45,11 +45,11 @@
 ## Homebrew packages
 
 ```shell
-brew install parallel pigz
-brew install bcftools blast samtools
+brew install parallel pigz wget aria2
+brew install bcftools blast samtools mafft
 
 brew tap brewsci/bio
-brew install mafft raxml
+brew install raxml
 
 brew tap wang-q/tap
 brew install faops lastz multiz sparsemem
