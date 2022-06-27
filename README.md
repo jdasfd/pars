@@ -1,6 +1,7 @@
 # Processing Yeast PARS Data
 
 [TOC level=1-3]: # " "
+
 - [Processing Yeast PARS Data](#processing-yeast-pars-data)
 - [Install needed softwares](#install-needed-softwares)
     - [Homebrew packages](#homebrew-packages)
@@ -39,13 +40,13 @@
 - [subpop](#subpop)
     - [stat subpopulation SNPs frequency](#stat-subpopulation-snps-frequency)
 
-
 # Install needed softwares
 
 ## Homebrew packages
 
-```bash
-brew install bcftools blast pigz samtools   
+```shell
+brew install parallel pigz
+brew install bcftools blast samtools
 
 brew tap brewsci/bio
 brew install mafft raxml
@@ -59,28 +60,20 @@ curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_
 
 ## Perl modules
 
-```bash
+```shell
 cpanm App::Fasops App::Rangeops App::Egaz
 
 ```
 
 ## R packages
 
-```bash
-Rscript -e 'install.packages("getopt", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("ape", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("ggplot2", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("scales", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("reshape", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("pander", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("gridExtra", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("plyr", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("dplyr", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("proto", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("gsubfn", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("RSQLite", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("sqldf", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
-Rscript -e 'install.packages("sm", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN")'
+```shell
+parallel -j 1 -k --line-buffer '
+    Rscript -e '\'' if (!requireNamespace("{}", quietly = TRUE)) { install.packages("{}", repos="https://mirrors.tuna.tsinghua.edu.cn/CRAN") } '\''
+    ' ::: \
+        getopt gsubfn RSQLite sqldf sm remotes \
+        extrafont ggplot2 scales gridExtra pander \
+        readr plyr dplyr proto reshape ape
 
 ```
 
@@ -88,7 +81,7 @@ Rscript -e 'install.packages("sm", repos="https://mirrors.tuna.tsinghua.edu.cn/C
 
 ## Download PARS10 full site.
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/PARS10
 cd ~/data/mrna-structure/PARS10
 
@@ -102,7 +95,7 @@ find . -name "*.gz" |
 
 ## SGD
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/sgd
 cd ~/data/mrna-structure/sgd
 
@@ -120,7 +113,7 @@ find . -name "*.gz" |
 
 ## Download S288c (soft-masked) from Ensembl
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/ensembl/
 cd ~/data/mrna-structure/ensembl/
 
@@ -133,7 +126,7 @@ find . -name "*.gz" | xargs gzip -t
 
 ## Download strains from NCBI assembly
 
-```bash
+```shell
 cd ~/data/mrna-structure/
 
 perl ~/Scripts/withncbi/taxon/assembly_prep.pl \
@@ -148,7 +141,7 @@ bash ASSEMBLY/scer.assembly.collect.sh
 
 ## Download strains from NCBI WGS
 
-```bash
+```shell
 cd ~/data/mrna-structure/
 
 perl ~/Scripts/withncbi/taxon/wgs_prep.pl \
@@ -162,7 +155,7 @@ bash WGS/scer.wgs.rsync.sh
 
 ## Download strains from 1002genomes project
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/download/
 cd ~/data/mrna-structure/download/
 
@@ -174,7 +167,7 @@ wget -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
 # Prepare sequences (RepeatMasker)
 
-```bash
+```shell
 cd ~/data/mrna-structure/
 
 # reference
@@ -210,7 +203,7 @@ bash GENOMES/0_prep.sh
 
 ## Sanger
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/alignment
 cd ~/data/mrna-structure/alignment
 
@@ -237,7 +230,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 ## PacBio
 
-```bash
+```shell
 cd ~/data/mrna-structure/alignment
 
 egaz template \
@@ -261,7 +254,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 ## Illumina
 
-```bash
+```shell
 cd ~/data/mrna-structure/alignment
 
 egaz template \
@@ -327,7 +320,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 Prepare a combined fasta file of yeast genome and blast genes against the genome.
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/blast
 cd ~/data/mrna-structure/blast
 
@@ -338,7 +331,7 @@ perl -nl -i -e '/^>/ or $_ = uc $_; print'  S288c.fa
 faops size S288c.fa > S288c.sizes
 
 # formatdb
-makeblastdb -dbtype nucl -in S288c.fa -parse_seqids 
+makeblastdb -dbtype nucl -in S288c.fa -parse_seqids
 
 # blast every transcripts against genome
 blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignments 10 -outfmt 0 \
@@ -354,7 +347,7 @@ perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
 
 ## create protein coding gene list
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/gene-filter
 cd ~/data/mrna-structure/gene-filter
 
@@ -378,7 +371,7 @@ cat protein_coding_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
         echo {1}
         echo {2} | jrunlist cover stdin -o mRNAs/{1}.yml
-    ' 
+    '
 jrunlist merge mRNAs/*.yml -o mRNAs.merge.yml
 rm -fr mRNAs
 
@@ -416,7 +409,7 @@ cat PARS_gene_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
         echo {1}
         echo {2} | jrunlist cover stdin -o PARS/{1}.yml
-    ' 
+    '
 jrunlist merge PARS/*.yml -o PARS.merge.yml
 rm -fr PARS
 
@@ -430,7 +423,7 @@ jrunlist split PARS.non-overlapped.yml -o PARS
 
 ## Intact mRNAs
 
-```bash
+```shell
 cd ~/data/mrna-structure/gene-filter
 
 pigz -dcf ../alignment/n7/Scer_n7_Spar_refined/*.gz |
@@ -483,14 +476,14 @@ wc -l *.lst ../blast/*.tsv* |
 
 ## Cut mRNA alignments and extract SNP list
 
-```bash
+```shell
 cd ~/data/mrna-structure/gene-filter
 
 # PARS slices
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     echo "==> ${NAME}"
     mkdir -p PARS_${NAME}
-    
+
     cat ${NAME}.intact.lst |
         parallel --no-run-if-empty --linebuffer -k -j 12 "
            fasops slice ${NAME}.fas.gz PARS/{}.yml -n S288c -o PARS_${NAME}/{}.fas
@@ -501,7 +494,7 @@ done
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     echo "==> ${NAME}"
     mkdir -p SNP_${NAME}
-    
+
     cat ${NAME}.intact.lst |
         parallel --no-run-if-empty --linebuffer -k -j 12 "
            fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o SNP_${NAME}/{}.SNPs.tsv
@@ -516,7 +509,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         unset file
     done
     rm -fr SNP_${NAME}/*.SNPs.tsv
-    
+
     cat SNP_${NAME}/*.tsv |
         perl -nla -F"\t" -e 'print qq{$F[4]\t$F[5]\t$F[6]\t$F[8]\t$F[9]\t$F[7]\t$F[13]};' > ${NAME}.total.SNPs.info.tsv #loccation,REF,ALT,mutant_to,freq,occured,gene
 
@@ -539,7 +532,7 @@ wc -l *.total.SNPs.info.tsv |
 
 # VCF of 1011 project
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/vcf
 cd ~/data/mrna-structure/vcf
 aria2c -c http://1002genomes.u-strasbg.fr/files/1011Matrix.gvcf.gz
@@ -615,7 +608,7 @@ cat 1011Matrix.wild.gvcf |
     ' \
     > 1011Matrix.wild.tsv
 
-cat 1011Matrix.wild.tsv | 
+cat 1011Matrix.wild.tsv |
     perl -nla -F"\t" -e '
         BEGIN {
             print qq{Location\tREF\tALT\tFreq_vcf\tREF_vcf\tALT_vcf};
@@ -670,7 +663,7 @@ rm 1011Matrix.gvcf 1011Matrix.wild.gvcf
 
 # VEP
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/vep
 cd ~/data/mrna-structure/vep
 
@@ -682,13 +675,13 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         --append-fields 2,3,4,5,6,7 \
     > ${NAME}.total.SNPs.info.update.tsv
     cat ${NAME}.total.SNPs.info.update.tsv | datamash check
-    cat ${NAME}.total.SNPs.info.update.tsv | 
+    cat ${NAME}.total.SNPs.info.update.tsv |
         perl -nla -F"\t" -e '
             my $loca = $F[0];
             $loca =~ /^(.*):(.*)/;
             my $Chr = $1;
             my $position = $2;
-            print qq{$Chr\t$position\t$position\t$F[1]\t$F[2]}; 
+            print qq{$Chr\t$position\t$position\t$F[1]\t$F[2]};
         ' \
     > ${NAME}.total.SNPs.update.tsv
 done
@@ -716,12 +709,11 @@ Upload ${NAME}.total.SNPs.update.tsv to https://asia.ensembl.org/Tools/VEP
 
 * Download VEP format profiles to `vep/`, and rename it to `${NAME}.total.SNPs.vep.txt`
 
-
-```bash
+```shell
 cd ~/data/mrna-structure/vep
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    cat ${NAME}.total.SNPs.vep.txt | 
+    cat ${NAME}.total.SNPs.vep.txt |
         perl -nla -F"\t" -e '
             next if /^#/;
             my $loca = $F[1];
@@ -750,7 +742,7 @@ wc -l *.total.SNPs.vep.tsv |
 
 # Process PARS data
 
-```bash
+```shell
 mkdir -p ~/data/mrna-structure/process
 cd ~/data/mrna-structure/process
 
@@ -758,8 +750,8 @@ perl ~/Scripts/pars/blastn_transcript.pl -f ../blast/sce_genes.blast -m 0
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     echo "==> ${NAME}"
-    
-    cat ../vep/${NAME}.total.SNPs.info.update.tsv | 
+
+    cat ../vep/${NAME}.total.SNPs.info.update.tsv |
         perl -nla -F"\t" -e 'print  qq{$F[0]};' |
         sort -u \
         > ${NAME}.snp.gene.pos.txt
@@ -769,7 +761,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         --gene sce_genes.blast.tsv \
         --pos  ${NAME}.snp.gene.pos.txt \
         > ${NAME}_fail_pos.txt # review fail_pos.txt to find SNPs located in overlapped genes
-    
+
     perl ~/Scripts/pars/process_vars_in_fold.pl --file ${NAME}.gene_variation.yml
 done
 
@@ -801,7 +793,7 @@ cat ../sgd/orf_coding_all.fasta |
         my @ranges = sort { $a <=> $b } grep {/^\d+$/} split /,|\-/, $range;
         my $intspan = AlignDB::IntSpan->new()->add_range(@ranges);
         my $hole = $intspan->holes;
-        
+
         printf qq{%s:%s\n}, $chr, $hole->as_string if $hole->is_not_empty;
     ' \
     > sce_intron.pos.txt
@@ -854,7 +846,7 @@ printf "|:--|--:|--:|--:|\n" >> coverage.stat.md
 for f in genes intron orf_genomic utr mRNA cds; do
     printf "| %s | %s | %s | %s |\n" \
         ${f} \
-        $( 
+        $(
             jrunlist stat ../blast/S288c.sizes sce_${f}.yml --all -o stdout |
                 grep -v coverage |
                 sed "s/,/ /g"
@@ -878,7 +870,7 @@ cat coverage.stat.md
 
 ## count per gene GC content
 
-```bash
+```shell
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     mkdir -p ~/data/mrna-structure/result/${NAME}
     cd ~/data/mrna-structure/result/${NAME}
@@ -892,7 +884,7 @@ done
 
 ## count SNPs and gene
 
-```bash
+```shell
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     cd ~/data/mrna-structure/result/${NAME}
     tsv-join --z \
@@ -901,7 +893,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         --key-fields 1 \
         --append-fields 2-8 \
     >${NAME}.tsv
-    cat ${NAME}.tsv | 
+    cat ${NAME}.tsv |
         perl -nla -F"\t" -e '
             if ($F[8] eq "-" || $F[6] eq $F[8]){
                 splice @F, 8, 1 ;
@@ -914,20 +906,20 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         ' \
     > ${NAME}_SNPs_total_info_vep_non_overlapped.tsv
     rm ${NAME}.tsv
-    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}  
+    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}
 done
 
 ```
 
 ## count A/T <-> G/C
 
-```bash
+```shell
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar; do
     cd ~/data/mrna-structure/result/${NAME}
     mkdir -p ~/data/mrna-structure/result/${NAME}/freq_each
-    
-    Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME} 
+
+    Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME}
     for AREA  in mRNA cds utr syn nsy; do
         perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_each/PARS_${AREA}_stat.csv --output freq_each/PARS_${AREA}_stat_chi_square.csv
     done
@@ -937,8 +929,8 @@ for NAME in Scer_n128_Spar Scer_n128_Seub; do
     cd ~/data/mrna-structure/result/${NAME}
     mkdir -p ~/data/mrna-structure/result/${NAME}/freq_each
     mkdir -p ~/data/mrna-structure/result/${NAME}/freq_10
-    
-    Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME} 
+
+    Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME}
     for AREA  in mRNA cds utr syn nsy; do
         perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_each/PARS_${AREA}_stat.csv --output freq_each/PARS_${AREA}_stat_chi_square.csv
         perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_10/PARS_${AREA}_stat_freq_10.csv --output freq_10/PARS_${AREA}_stat_freq_10_chi_square.csv
@@ -949,9 +941,9 @@ done
 
 ## count stem length selection
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
-cd ~/data/mrna-structure/result/${NAME} 
+cd ~/data/mrna-structure/result/${NAME}
 mkdir -p freq_10/stem_length
 
 perl ~/Scripts/pars/program/count_position_gene.pl --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml --origin data_SNPs_PARS_mRNA.csv --output data_SNPs_PARS_mRNA_pos.csv
@@ -960,8 +952,8 @@ Rscript ~/Scripts/pars/program/count_AT_GC_gene_trait.R -n ${NAME}
 
 for CATEGORY in stem_AT_GC stem_GC_AT loop_AT_GC loop_GC_AT; do
     cat freq_10/stem_length/PARS_mRNA_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=15; i++)) 
-    do     
+    for ((i=2; i<=15; i++))
+    do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/stem_length/PARS_mRNA_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -995,9 +987,9 @@ unset NAME
 
 ## count_codon_gene
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
-cd ~/data/mrna-structure/result/${NAME} 
+cd ~/data/mrna-structure/result/${NAME}
 perl ~/Scripts/pars/program/count_codon_gene.pl --origin data_SNPs_PARS_syn.csv --output data_SNPs_PARS_syn_codon.csv
 Rscript ~/Scripts/pars/program/count_AT_GC_codon.R -n ${NAME}
 for AREA  in tRNA 4D; do
@@ -1011,9 +1003,9 @@ unset NAME
 
 ## count per gene cds_utr
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
-cd ~/data/mrna-structure/result/${NAME} 
+cd ~/data/mrna-structure/result/${NAME}
 for AREA in cds utr; do
     perl ~/Scripts/pars/program/count_cut_range.pl --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml --cut ~/data/mrna-structure/process/sce_${AREA}.yml --output stem_loop_${AREA}_length.csv
     perl ~/Scripts/pars/program/count_per_gene_ACGT_percent.pl --file data_SNPs_PARS_${AREA}.csv --output data_SNPs_PARS_${AREA}_per_gene_ATGC.csv
@@ -1024,10 +1016,9 @@ unset NAME
 
 ```
 
-
 # GO/KEGG
 
-```bash
+```shell
 cd ~/data/mrna-structure/vcf
 
 export NAME=Scer_n128_Spar
@@ -1048,7 +1039,7 @@ cat ~/data/mrna-structure/result/${NAME}/data_SNPs_PARS_mRNA.csv |
         }else{
             $ALT = $uniq[0];
         }
-        print qq{$F[0]\t$F[8]\t$F[6]\t$F[11]\t$REF\t$ALT\t$Freq\t$REF_pars\t$ALT_pars}; 
+        print qq{$F[0]\t$F[8]\t$F[6]\t$F[11]\t$REF\t$ALT\t$Freq\t$REF_pars\t$ALT_pars};
         BEGIN{
             print qq{location\tgene\tstructure\tmutant_to\tREF\tALT\tfreq_pars\tREF_pars\tALT_pars};
         }
@@ -1084,8 +1075,8 @@ cat ${NAME}_data_SNPs_PARS_mRNA.merge.wild.tsv |
             #$chi->print_summary();
             $Chi = ${$chi}{'chisq_statistic'};
             $P = ${$chi}{'p_value'};
-            my $chi = 
-            print qq{$F[0]\t$F[1]\t$F[2]\t$F[3]\t$F[4]\t$F[5]\t$F[6]\t$F[11]\t$minus\t$Chi\t$P}; 
+            my $chi =
+            print qq{$F[0]\t$F[1]\t$F[2]\t$F[3]\t$F[4]\t$F[5]\t$F[6]\t$F[11]\t$minus\t$Chi\t$P};
         }
         BEGIN{
             print qq{location\tgene\tstructure\tmutant_to\tREF\tALT\tfreq_pars\tfreq_vcf\tfreq_minus\tchi\tp};
@@ -1100,7 +1091,7 @@ cat ${NAME}_data_SNPs_PARS_mRNA.merge.wild.Chi.tsv |
     > ${NAME}.mRNA.wild.snp.update.txt
 
 ## extract freq_minus>0,p<0.05 in 1011.wild
-cat ${NAME}_data_SNPs_PARS_mRNA.merge.wild.Chi.tsv | 
+cat ${NAME}_data_SNPs_PARS_mRNA.merge.wild.Chi.tsv |
     perl -nla -F"\t" -e '
         next if /^location/;
         if ($F[8]>0 && $F[10]<0.05){
@@ -1118,7 +1109,7 @@ unset NAME
 
 ## update wild
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
 mkdir -p ~/data/mrna-structure/result/${NAME}.update
 mkdir -p ~/data/mrna-structure/result/${NAME}.update/freq_each
@@ -1145,7 +1136,7 @@ unset NAME
 upload Scer_n128_Spar.update/mRNA.gene.list.update.csv in https://david.ncifcrf.gov/ , get GO/KEGG
 information
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
 
 cd ~/data/mrna-structure/result/${NAME}.update
@@ -1158,8 +1149,8 @@ Rscript ~/Scripts/pars/program/count_AT_GC_GO_KEGG.R -n ${NAME}.update
 ##BP
 for CATEGORY in stem_AT_GC; do
     cat freq_10/GO/BP_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=123; i++)) 
-    do     
+    for ((i=2; i<=123; i++))
+    do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/GO/BP_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1176,8 +1167,8 @@ done
 ##CC
 for CATEGORY in stem_AT_GC; do
     cat freq_10/GO/CC_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=72; i++)) 
-    do     
+    for ((i=2; i<=72; i++))
+    do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/GO/CC_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1194,8 +1185,8 @@ done
 ##MF
 for CATEGORY in stem_AT_GC; do
     cat freq_10/GO/MF_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=52; i++)) 
-    do     
+    for ((i=2; i<=52; i++))
+    do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/GO/MF_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1212,8 +1203,8 @@ done
 ##KEGG
 for CATEGORY in stem_AT_GC; do
     cat freq_10/KEGG/KEGG_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=30; i++)) 
-    do     
+    for ((i=2; i<=30; i++))
+    do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/KEGG/KEGG_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1239,8 +1230,8 @@ Rscript ~/Scripts/pars/program/count_AT_GC_GO_KEGG_SN.R -n ${NAME}.update
 for AREA in syn nsy; do
     for CATEGORY in stem_AT_GC; do
         cat freq_10/go_kegg/${AREA}/go_kegg_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-        for ((i=2; i<=41; i++)) 
-        do     
+        for ((i=2; i<=41; i++))
+        do
             tsv-join \
             list.tmp \
                 -f <(cat freq_10/go_kegg/${AREA}/go_kegg_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1262,7 +1253,7 @@ unset NAME
 
 ## stat subpopulation SNPs frequency
 
-```bash
+```shell
 export NAME=Scer_n128_Spar
 mkdir -p ~/data/mrna-structure/result/${NAME}.update/subpop
 cd ~/data/mrna-structure/result/${NAME}.update/subpop
@@ -1284,7 +1275,7 @@ rm data_SNPs_PARS_mRNA_filiter.tsv
 cat genelist.csv | while read i
     do
         export GENE=${i}
-        cat data_SNPs_PARS_mRNA_all.tsv | 
+        cat data_SNPs_PARS_mRNA_all.tsv |
             perl -nl -a -F"\t" -e '
                 if ($F[12] eq $ENV{GENE}){
                     my $F = join("\t",@F);
