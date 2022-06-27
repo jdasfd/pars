@@ -1,48 +1,8 @@
 # Processing Yeast PARS Data
 
-[TOC level=1-3]: # " "
+## Install the required software
 
-- [Processing Yeast PARS Data](#processing-yeast-pars-data)
-- [Install needed softwares](#install-needed-softwares)
-    - [Homebrew packages](#homebrew-packages)
-    - [Perl modules](#perl-modules)
-    - [R packages](#r-packages)
-- [Download reference data](#download-reference-data)
-    - [Download PARS10 full site.](#download-pars10-full-site)
-    - [SGD](#sgd)
-- [Download genomes of strains](#download-genomes-of-strains)
-    - [Download S288c (soft-masked) from Ensembl](#download-s288c-soft-masked-from-ensembl)
-    - [Download strains from NCBI assembly](#download-strains-from-ncbi-assembly)
-    - [Download strains from NCBI WGS](#download-strains-from-ncbi-wgs)
-    - [Download strains from 1002genomes project](#download-strains-from-1002genomes-project)
-- [Prepare sequences (RepeatMasker)](#prepare-sequences-repeatmasker)
-- [Align](#align)
-    - [Sanger](#sanger)
-    - [PacBio](#pacbio)
-    - [Illumina](#illumina)
-- [Blast](#blast)
-- [Gene filter](#gene-filter)
-    - [create protein coding gene list](#create-protein-coding-gene-list)
-    - [Intact mRNAs](#intact-mrnas)
-    - [Cut mRNA alignments and extract SNP list](#cut-mrna-alignments-and-extract-snp-list)
-- [VCF of 1011 project](#vcf-of-1011-project)
-- [VEP](#vep)
-- [Process PARS data](#process-pars-data)
-- [SNP](#snp)
-    - [count per gene GC content](#count-per-gene-gc-content)
-    - [count SNPs and gene](#count-snps-and-gene)
-    - [count A/T <-> G/C](#count-at---gc)
-    - [count stem length selection](#count-stem-length-selection)
-    - [count_codon_gene](#count_codon_gene)
-    - [count per gene cds_utr](#count-per-gene-cds_utr)
-- [GO/KEGG](#gokegg)
-    - [update wild](#update-wild)
-- [subpop](#subpop)
-    - [stat subpopulation SNPs frequency](#stat-subpopulation-snps-frequency)
-
-# Install needed softwares
-
-## Homebrew packages
+### Homebrew packages
 
 ```shell
 brew install parallel pigz wget aria2
@@ -58,14 +18,14 @@ curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_
 
 ```
 
-## Perl modules
+### Perl modules
 
 ```shell
 cpanm App::Fasops App::Rangeops App::Egaz
 
 ```
 
-## R packages
+### R packages
 
 ```shell
 parallel -j 1 -k --line-buffer '
@@ -77,9 +37,9 @@ parallel -j 1 -k --line-buffer '
 
 ```
 
-# Download reference data
+## Download reference data
 
-## Download PARS10 full site.
+### PARS10 score files
 
 ```shell
 mkdir -p ~/data/mrna-structure/PARS10
@@ -104,7 +64,7 @@ find . -name "*.gz" |
 
 ```
 
-## SGD
+### SGD
 
 ```shell
 mkdir -p ~/data/mrna-structure/sgd
@@ -120,9 +80,9 @@ find . -name "*.gz" |
 
 ```
 
-# Download genomes of strains
+## Download genomes of strains
 
-## Download S288c (soft-masked) from Ensembl
+### S288c (soft-masked) from Ensembl
 
 ```shell
 mkdir -p ~/data/mrna-structure/ensembl/
@@ -135,7 +95,7 @@ find . -name "*.gz" | xargs gzip -t
 
 ```
 
-## Download strains from NCBI assembly
+### Strains from NCBI assembly
 
 ```shell
 cd ~/data/mrna-structure/
@@ -150,7 +110,7 @@ bash ASSEMBLY/scer.assembly.collect.sh
 
 ```
 
-## Download strains from NCBI WGS
+### Strains from NCBI WGS
 
 ```shell
 cd ~/data/mrna-structure/
@@ -164,7 +124,7 @@ bash WGS/scer.wgs.rsync.sh
 
 ```
 
-## Download strains from 1002genomes project
+### Strains from 1002genomes project
 
 ```shell
 mkdir -p ~/data/mrna-structure/download/
@@ -176,7 +136,7 @@ wget -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
 ```
 
-# Prepare sequences (RepeatMasker)
+## Prepare sequences (RepeatMasker)
 
 ```shell
 cd ~/data/mrna-structure/
@@ -210,9 +170,9 @@ bash GENOMES/0_prep.sh
 
 ```
 
-# Align
+## Align
 
-## Sanger
+### Sanger
 
 ```shell
 mkdir -p ~/data/mrna-structure/alignment
@@ -239,7 +199,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 ```
 
-## PacBio
+### PacBio
 
 ```shell
 cd ~/data/mrna-structure/alignment
@@ -263,7 +223,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 ```
 
-## Illumina
+### Illumina
 
 ```shell
 cd ~/data/mrna-structure/alignment
@@ -327,7 +287,7 @@ find . -mindepth 1 -maxdepth 3 -type d -name "*_fasta" | parallel -r rm -fr
 
 ```
 
-# Blast
+## Blast
 
 Prepare a combined fasta file of yeast genome and blast genes against the genome.
 
@@ -354,9 +314,9 @@ perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
 
 ```
 
-# Gene filter
+## Gene filter
 
-## create protein coding gene list
+### create protein coding gene list
 
 ```shell
 mkdir -p ~/data/mrna-structure/gene-filter
@@ -432,7 +392,7 @@ jrunlist split PARS.non-overlapped.yml -o PARS
 
 ```
 
-## Intact mRNAs
+### Intact mRNAs
 
 ```shell
 cd ~/data/mrna-structure/gene-filter
@@ -485,7 +445,7 @@ wc -l *.lst ../blast/*.tsv* |
 | ../blast/sce_genes.blast.tsv      |  2980 |
 | ../blast/sce_genes.blast.tsv.skip |   216 |
 
-## Cut mRNA alignments and extract SNP list
+### Cut mRNA alignments and extract SNP list
 
 ```shell
 cd ~/data/mrna-structure/gene-filter
@@ -541,7 +501,7 @@ wc -l *.total.SNPs.info.tsv |
 | Scer_n7p_Spar.total.SNPs.info.tsv  | 38481 |
 | Scer_n7_Spar.total.SNPs.info.tsv   | 30038 |
 
-# VCF of 1011 project
+## VCF of 1011 project
 
 ```shell
 mkdir -p ~/data/mrna-structure/vcf
@@ -672,7 +632,7 @@ rm 1011Matrix.gvcf 1011Matrix.wild.gvcf
 | 1011Matrix.ext.tsv      | 1544488 |
 | 1011Matrix.ext.wild.tsv | 1544485 |
 
-# VEP
+## VEP
 
 ```shell
 mkdir -p ~/data/mrna-structure/vep
@@ -751,7 +711,7 @@ wc -l *.total.SNPs.vep.tsv |
 | Scer_n7_Spar.total.SNPs.vep.tsv   | 26818 |
 | Scer_n7p_Spar.total.SNPs.vep.tsv  | 35082 |
 
-# Process PARS data
+## Process PARS data
 
 ```shell
 mkdir -p ~/data/mrna-structure/process
@@ -877,9 +837,9 @@ cat coverage.stat.md
 | mRNA        |  12071326 | 4234684 |   0.3508 |
 | cds         |  12071326 | 3717983 |   0.3080 |
 
-# SNP
+## SNP
 
-## count per gene GC content
+### count per gene GC content
 
 ```shell
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -893,7 +853,7 @@ done
 
 ```
 
-## count SNPs and gene
+### count SNPs and gene
 
 ```shell
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -922,7 +882,7 @@ done
 
 ```
 
-## count A/T <-> G/C
+### count A/T <-> G/C
 
 ```shell
 
@@ -950,7 +910,7 @@ done
 
 ```
 
-## count stem length selection
+### count stem length selection
 
 ```shell
 export NAME=Scer_n128_Spar
@@ -996,7 +956,7 @@ unset NAME
 
 ```
 
-## count_codon_gene
+### count_codon_gene
 
 ```shell
 export NAME=Scer_n128_Spar
@@ -1012,7 +972,7 @@ unset NAME
 
 ```
 
-## count per gene cds_utr
+### count per gene cds_utr
 
 ```shell
 export NAME=Scer_n128_Spar
@@ -1027,7 +987,7 @@ unset NAME
 
 ```
 
-# GO/KEGG
+## GO/KEGG
 
 ```shell
 cd ~/data/mrna-structure/vcf
@@ -1118,7 +1078,7 @@ unset NAME
 
 ```
 
-## update wild
+### update wild
 
 ```shell
 export NAME=Scer_n128_Spar
@@ -1260,9 +1220,9 @@ unset NAME
 
 ```
 
-# subpop
+## subpop
 
-## stat subpopulation SNPs frequency
+### stat subpopulation SNPs frequency
 
 ```shell
 export NAME=Scer_n128_Spar
