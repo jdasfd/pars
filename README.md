@@ -73,7 +73,7 @@ cd ~/data/mrna-structure/sgd
 aria2c -c http://downloads.yeastgenome.org/sequence/S288C_reference/intergenic/NotFeature.fasta.gz
 aria2c -c http://downloads.yeastgenome.org/sequence/S288C_reference/orf_dna/orf_coding_all.fasta.gz
 aria2c -c http://downloads.yeastgenome.org/sequence/S288C_reference/orf_dna/orf_genomic_all.fasta.gz
-aria2c -c http://downloads.yeastgenome.org/curation/chromosomal_feature/saccharomyces_cerevisiae.gff
+aria2c -c http://downloads.yeastgenome.org/curation/chromosomal_feature/saccharomyces_cerevisiae.gff.gz
 
 find . -name "*.gz" |
     parallel -j 1 'gzip -dcf {} > {.}'
@@ -88,8 +88,8 @@ find . -name "*.gz" |
 mkdir -p ~/data/mrna-structure/ensembl/
 cd ~/data/mrna-structure/ensembl/
 
-aria2c -x 6 -s 3 -c ftp://ftp.ensembl.org/pub/release-94/fasta/saccharomyces_cerevisiae/dna/Saccharomyces_cerevisiae.R64-1-1.dna_sm.toplevel.fa.gz
-aria2c -x 6 -s 3 -c ftp://ftp.ensembl.org/pub/release-94/gff3/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.94.gff3.gz
+aria2c -c ftp://ftp.ensembl.org/pub/release-105/fasta/saccharomyces_cerevisiae/dna/Saccharomyces_cerevisiae.R64-1-1.dna_sm.toplevel.fa.gz
+aria2c -c ftp://ftp.ensembl.org/pub/release-105/gff3/saccharomyces_cerevisiae/Saccharomyces_cerevisiae.R64-1-1.105.gff3.gz
 
 find . -name "*.gz" | xargs gzip -t
 
@@ -104,9 +104,20 @@ perl ~/Scripts/withncbi/taxon/assembly_prep.pl \
     -f ~/Scripts/pars/scer.assembly.tsv \
     -o ASSEMBLY
 
+# Run
 bash ASSEMBLY/scer.assembly.rsync.sh
 
 bash ASSEMBLY/scer.assembly.collect.sh
+
+# md5
+cat ASSEMBLY/rsync.tsv |
+    tsv-select -f 1 |
+    parallel -j 4 --keep-order '
+        echo "==> {}"
+        cd ASSEMBLY/{}
+        md5sum --check md5checksums.txt
+    ' |
+    grep -v ": OK"
 
 ```
 
@@ -130,7 +141,7 @@ bash WGS/scer.wgs.rsync.sh
 mkdir -p ~/data/mrna-structure/download/
 cd ~/data/mrna-structure/download/
 
-wget -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
+aria2c -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
 #tar -zxvf 1011Assemblies.tar.gz
 
@@ -148,7 +159,7 @@ egaz prepseq \
     --min 1000 --gi -v \
     -o GENOMES/S288c
 
-gzip -dcf ensembl/Saccharomyces_cerevisiae.R64-1-1.94.gff3.gz > GENOMES/S288c/chr.gff
+gzip -dcf ensembl/Saccharomyces_cerevisiae.R64-1-1.105.gff3.gz > GENOMES/S288c/chr.gff
 
 # prep assembly
 egaz template \
@@ -190,8 +201,8 @@ egaz template \
 
 bash n7/1_pair.sh
 bash n7/3_multi.sh
-bash n7/6_chr_length.sh
-bash n7/7_multi_aligndb.sh
+#bash n7/6_chr_length.sh
+#bash n7/7_multi_aligndb.sh
 
 # clean
 find . -mindepth 1 -maxdepth 3 -type d -name "*_raw"   | parallel -r rm -fr
