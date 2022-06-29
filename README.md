@@ -225,8 +225,8 @@ egaz template \
 
 bash n7p/1_pair.sh
 bash n7p/3_multi.sh
-bash n7p/6_chr_length.sh
-bash n7p/7_multi_aligndb.sh
+#bash n7p/6_chr_length.sh
+#bash n7p/7_multi_aligndb.sh
 
 # clean
 find . -mindepth 1 -maxdepth 3 -type d -name "*_raw"   | parallel -r rm -fr
@@ -250,7 +250,7 @@ egaz template \
     ) \
     GENOMES/Spar GENOMES/Seub \
     --multi -o n128 \
-    -v --parallel 16
+    -v --parallel 12
 
 bash n128/1_pair.sh
 
