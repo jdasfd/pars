@@ -147,6 +147,16 @@ aria2c -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
 ```
 
+## Download vcf from the 1002 project
+
+```shell
+mkdir -p ~/data/mrna-structure/vcf
+cd ~/data/mrna-structure/vcf
+
+aria2c -c http://1002genomes.u-strasbg.fr/files/1011Matrix.gvcf.gz
+
+```
+
 ## Prepare sequences (RepeatMasker)
 
 ```shell
@@ -267,11 +277,11 @@ egaz template \
     --multi -o n128 \
     --multiname Scer_n128_Spar --outgroup Spar \
     --vcf --aligndb \
-    --order -v --parallel 16
+    --order -v --parallel 12
 
 bash n128/3_multi.sh
-bash n128/6_chr_length.sh
-bash n128/7_multi_aligndb.sh
+#bash n128/6_chr_length.sh
+#bash n128/7_multi_aligndb.sh
 
 egaz template \
     GENOMES/S288c \
@@ -286,11 +296,11 @@ egaz template \
     --multi -o n128 \
     --multiname Scer_n128_Seub --outgroup Seub \
     --vcf --aligndb \
-    --order -v --parallel 16
+    --order -v --parallel 12
 
 bash n128/3_multi.sh
-bash n128/6_chr_length.sh
-bash n128/7_multi_aligndb.sh
+#bash n128/6_chr_length.sh
+#bash n128/7_multi_aligndb.sh
 
 # clean
 find . -mindepth 1 -maxdepth 3 -type d -name "*_raw"   | parallel -r rm -fr
@@ -318,7 +328,7 @@ makeblastdb -dbtype nucl -in S288c.fa -parse_seqids
 # blast every transcripts against genome
 blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignments 10 -outfmt 0 \
     -dust yes -soft_masking true \
-    -db S288c.fa -query ../PARS10/pubs/PARS10/data/sce_genes.fasta -out sce_genes.blast
+    -db S288c.fa -query ../PARS10/sce_genes.fasta -out sce_genes.blast
 
 # parse blastn output
 perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
@@ -351,17 +361,17 @@ cat ../sgd/saccharomyces_cerevisiae.gff |
 mkdir -p mRNAs
 cat protein_coding_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
-        echo {1}
-        echo {2} | jrunlist cover stdin -o mRNAs/{1}.yml
+        >&2 echo {1}
+        echo {2} | spanr cover stdin -o mRNAs/{1}.yml
     '
-jrunlist merge mRNAs/*.yml -o mRNAs.merge.yml
+spanr merge mRNAs/*.yml -o mRNAs.merge.yml
 rm -fr mRNAs
 
 # overlapped regions
 cut -d, -f 2 protein_coding_list.csv |
-    jrunlist cover -c 2 stdin -o overlapped.yml
+    spanr coverage -m 2 stdin -o overlapped.yml
 
-jrunlist statop \
+spanr statop \
     ../blast/S288c.sizes \
     mRNAs.merge.yml overlapped.yml \
     --op intersect --all -o stdout |
@@ -390,16 +400,16 @@ mkdir -p PARS
 cat PARS_gene_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
         echo {1}
-        echo {2} | jrunlist cover stdin -o PARS/{1}.yml
+        echo {2} | spanr cover stdin -o PARS/{1}.yml
     '
-jrunlist merge PARS/*.yml -o PARS.merge.yml
+spanr merge PARS/*.yml -o PARS.merge.yml
 rm -fr PARS
 
-jrunlist some mRNAs.merge.yml PARS-non-overlapped.lst -o mRNAs.non-overlapped.yml
-#jrunlist split mRNAs.non-overlapped.yml -o mRNAs
+spanr some mRNAs.merge.yml PARS-non-overlapped.lst -o mRNAs.non-overlapped.yml
+#spanr split mRNAs.non-overlapped.yml -o mRNAs
 
-jrunlist some PARS.merge.yml PARS-non-overlapped.lst -o PARS.non-overlapped.yml
-jrunlist split PARS.non-overlapped.yml -o PARS
+spanr some PARS.merge.yml PARS-non-overlapped.lst -o PARS.non-overlapped.yml
+spanr split PARS.non-overlapped.yml -o PARS
 
 ```
 
@@ -512,12 +522,11 @@ wc -l *.total.SNPs.info.tsv |
 | Scer_n7p_Spar.total.SNPs.info.tsv  | 38481 |
 | Scer_n7_Spar.total.SNPs.info.tsv   | 30038 |
 
-## VCF of 1011 project
+## VCF of 1002 project
 
 ```shell
-mkdir -p ~/data/mrna-structure/vcf
 cd ~/data/mrna-structure/vcf
-aria2c -c http://1002genomes.u-strasbg.fr/files/1011Matrix.gvcf.gz
+
 pigz -dcf 1011Matrix.gvcf.gz > 1011Matrix.gvcf
 
 # 1011
@@ -739,7 +748,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         > ${NAME}.snp.gene.pos.txt
 
     perl ~/Scripts/pars/read_fold.pl \
-        --pars ../PARS10/pubs/PARS10/data \
+        --pars ../PARS10 \
         --gene sce_genes.blast.tsv \
         --pos  ${NAME}.snp.gene.pos.txt \
         > ${NAME}_fail_pos.txt # review fail_pos.txt to find SNPs located in overlapped genes
