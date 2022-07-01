@@ -316,11 +316,13 @@ Prepare a combined fasta file of yeast genome and blast genes against the genome
 mkdir -p ~/data/mrna-structure/blast
 cd ~/data/mrna-structure/blast
 
+# combined all chrosomes into one fasta
 cat ~/data/mrna-structure/GENOMES/S288c/{I,II,III,IV,V,VI,VII,VIII,IX,X,XI,XII,XIII,XIV,XV,XVI,Mito}.fa \
     > S288c.fa
 
 perl -nl -i -e '/^>/ or $_ = uc $_; print'  S288c.fa
 faops size S288c.fa > S288c.sizes
+# uc in perl means change strings into capital format
 
 # formatdb
 makeblastdb -dbtype nucl -in S288c.fa -parse_seqids
@@ -329,9 +331,29 @@ makeblastdb -dbtype nucl -in S288c.fa -parse_seqids
 blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignments 10 -outfmt 0 \
     -dust yes -soft_masking true \
     -db S288c.fa -query ../PARS10/sce_genes.fasta -out sce_genes.blast
+# blast -help: Print USAGE, DESCRIPTION and ARGUMENTS; ignore all other parameters
+# -task <String, Permissible values: 'blastn' 'blastn-short' 'dc-megablast' 'megablast' 'rmblastn' >
+#     Task to execute, default = `megablast`
+# -num_descriptions <Integer, >=0>:
+#     Number of database sequences to show one-line descriptions for
+#     Not applicable for outfmt > 4
+#     Default = `500`
+# -num_alignments <Integer, >=0>:
+#     Number of database sequences to show alignments for
+#     Default = `250`
+# -outfmt <String>: 0 = Pairwise
+# -dust <String>:
+#     Filter query sequence with DUST (Format: 'yes', 'level window linker', or 'no' to disable)
+#     Default = `20 64 1`
+# -soft_masking <Boolean>
+#     Apply filtering locations as soft masks
+#     Default = `true`
+# soft_masking is the step to avoid using repeated sequences
 
 # parse blastn output
 perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
+# --view/-m INT: blast output format, same as `blastall -m`
+# 0 => Pairwise
 
 ```
 
@@ -357,6 +379,8 @@ cat ../sgd/saccharomyces_cerevisiae.gff |
         print join qq{,}, $ID, qq{$chr($F[6]):$F[3]-$F[4]};
     ' \
     > protein_coding_list.csv
+# extract mRNAs and their positions from gff
+# output format: 2 cols for anno (col1) and pos (col2)
 
 mkdir -p mRNAs
 cat protein_coding_list.csv |
@@ -364,12 +388,19 @@ cat protein_coding_list.csv |
         >&2 echo {1}
         echo {2} | spanr cover stdin -o mRNAs/{1}.yml
     '
+# echo 'YAL069W,I(+):335-649' | spanr cover stdin
+#---
+#I: 335-649
+#
+# So the step would convert .csv to .yml for each mRNA
 spanr merge mRNAs/*.yml -o mRNAs.merge.yml
+# spanr merge could combine all ymls into one
 rm -fr mRNAs
 
 # overlapped regions
 cut -d, -f 2 protein_coding_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
+# -m, --minimum <minimum>: Set the minimum depth of coverage [default: 1]
 
 spanr statop \
     ../blast/S288c.sizes \
