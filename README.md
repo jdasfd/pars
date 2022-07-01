@@ -5,7 +5,7 @@
 ### Homebrew packages
 
 ```shell
-brew install parallel pigz wget aria2
+brew install parallel pigz wget aria2 pv
 brew install bcftools blast samtools mafft
 
 brew tap brewsci/bio
@@ -143,11 +143,9 @@ cd ~/data/mrna-structure/download/
 
 aria2c -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
-#tar -zxvf 1011Assemblies.tar.gz
-
 ```
 
-## Download vcf from the 1002 project
+## Download files from the 1002 project
 
 ```shell
 mkdir -p ~/data/mrna-structure/vcf
@@ -343,37 +341,37 @@ perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
 mkdir -p ~/data/mrna-structure/gene-filter
 cd ~/data/mrna-structure/gene-filter
 
-# sgd/saccharomyces_cerevisiae.gff → protein coding gene list
+# sgd/saccharomyces_cerevisiae.gff → gene list
 cat ../sgd/saccharomyces_cerevisiae.gff |
     perl -nla -e '
         next if /^#/;
-        next unless $F[2] eq q{mRNA};
+        next unless $F[2] eq q{gene};
         my $annotation = $F[8];
-        $annotation =~ /ID=(.*)_mRNA;Name=/;
+        $annotation =~ /ID=(.*);Name=/ or next;
         my $ID = $1;
         my $chr = $F[0];
         $chr =~ s/^chr//i;
         next if $chr eq q{mt}; # Skip genes on mitochondria
         print join qq{,}, $ID, qq{$chr($F[6]):$F[3]-$F[4]};
     ' \
-    > protein_coding_list.csv
+    > gene_list.csv
 
-mkdir -p mRNAs
-cat protein_coding_list.csv |
+mkdir -p genes
+cat gene_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
         >&2 echo {1}
-        echo {2} | spanr cover stdin -o mRNAs/{1}.yml
+        echo {2} | spanr cover stdin -o genes/{1}.yml
     '
-spanr merge mRNAs/*.yml -o mRNAs.merge.yml
-rm -fr mRNAs
+spanr merge genes/*.yml -o genes.merge.yml
+rm -fr genes
 
 # overlapped regions
-cut -d, -f 2 protein_coding_list.csv |
+cut -d, -f 2 gene_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
 
 spanr statop \
     ../blast/S288c.sizes \
-    mRNAs.merge.yml overlapped.yml \
+    genes.merge.yml overlapped.yml \
     --op intersect --all -o stdout |
     grep -v "^key" |
     perl -nla -F, -e '
@@ -405,7 +403,7 @@ cat PARS_gene_list.csv |
 spanr merge PARS/*.yml -o PARS.merge.yml
 rm -fr PARS
 
-spanr some mRNAs.merge.yml PARS-non-overlapped.lst -o mRNAs.non-overlapped.yml
+spanr some genes.merge.yml PARS-non-overlapped.lst -o genes.non-overlapped.yml
 #spanr split mRNAs.non-overlapped.yml -o mRNAs
 
 spanr some PARS.merge.yml PARS-non-overlapped.lst -o PARS.non-overlapped.yml
@@ -418,27 +416,27 @@ spanr split PARS.non-overlapped.yml -o PARS
 ```shell
 cd ~/data/mrna-structure/gene-filter
 
-pigz -dcf ../alignment/n7/Scer_n7_Spar_refined/*.gz |
+gzip -dcf ../alignment/n7/Scer_n7_Spar_refined/*.gz |
     pigz > Scer_n7_Spar.fas.gz
-pigz -dcf ../alignment/n7p/Scer_n7p_Spar_refined/*.gz |
+gzip -dcf ../alignment/n7p/Scer_n7p_Spar_refined/*.gz |
     pigz > Scer_n7p_Spar.fas.gz
 
-pigz -dcf ../alignment/n128/Scer_n128_Spar_refined/*.gz |
+gzip -dcf ../alignment/n128/Scer_n128_Spar_refined/*.gz |
     pigz > Scer_n128_Spar.fas.gz
-pigz -dcf ../alignment/n128/Scer_n128_Seub_refined/*.gz |
+gzip -dcf ../alignment/n128/Scer_n128_Seub_refined/*.gz |
     pigz > Scer_n128_Seub.fas.gz
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     fasops covers -n S288c ${NAME}.fas.gz -o ${NAME}.yml
 done
 
 # intact mRNAs
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
-    jrunlist statop \
+    >&2 echo "==> ${NAME}"
+    spanr statop \
         ../blast/S288c.sizes \
-        mRNAs.non-overlapped.yml ${NAME}.yml \
+        genes.non-overlapped.yml ${NAME}.yml \
         --op intersect --all -o stdout |
         grep -v "^key" |
         perl -nla -F, -e '
@@ -456,13 +454,13 @@ wc -l *.lst ../blast/*.tsv* |
 ```
 
 | File                              | Count |
-|:----------------------------------|------:|
-| non-overlapped.lst                |  5344 |
-| PARS-non-overlapped.lst           |  2494 |
-| Scer_n128_Seub.intact.lst         |  1500 |
-| Scer_n128_Spar.intact.lst         |  1997 |
-| Scer_n7p_Spar.intact.lst          |  2270 |
-| Scer_n7_Spar.intact.lst           |  2234 |
+|-----------------------------------|------:|
+| PARS-non-overlapped.lst           |  2493 |
+| Scer_n128_Seub.intact.lst         |  1490 |
+| Scer_n128_Spar.intact.lst         |  1985 |
+| Scer_n7_Spar.intact.lst           |  2209 |
+| Scer_n7p_Spar.intact.lst          |  2266 |
+| non-overlapped.lst                |  5347 |
 | ../blast/sce_genes.blast.tsv      |  2980 |
 | ../blast/sce_genes.blast.tsv.skip |   216 |
 
