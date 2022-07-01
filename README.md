@@ -490,14 +490,14 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
            fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o SNP_${NAME}/{}.SNPs.tsv
         "
 
-    cat ${NAME}.intact.lst | while read i
-    do
-        file=SNP_${NAME}/${i}.SNPs.tsv
-        export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
-        cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
-        unset prefix
-        unset file
-    done
+    cat ${NAME}.intact.lst |
+        while read i; do
+            file=SNP_${NAME}/${i}.SNPs.tsv
+            export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
+            cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
+            unset prefix
+            unset file
+        done
     rm -fr SNP_${NAME}/*.SNPs.tsv
 
     cat SNP_${NAME}/*.tsv |
@@ -514,11 +514,11 @@ wc -l *.total.SNPs.info.tsv |
 ```
 
 | File                               | Count |
-|:-----------------------------------|:------|
-| Scer_n128_Seub.total.SNPs.info.tsv | 30834 |
-| Scer_n128_Spar.total.SNPs.info.tsv | 50268 |
-| Scer_n7p_Spar.total.SNPs.info.tsv  | 38481 |
-| Scer_n7_Spar.total.SNPs.info.tsv   | 30038 |
+|------------------------------------|------:|
+| Scer_n128_Seub.total.SNPs.info.tsv | 30696 |
+| Scer_n128_Spar.total.SNPs.info.tsv | 50046 |
+| Scer_n7_Spar.total.SNPs.info.tsv   | 29781 |
+| Scer_n7p_Spar.total.SNPs.info.tsv  | 38353 |
 
 ## VCF of 1002 project
 
@@ -675,8 +675,10 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         -f ../gene-filter/${NAME}.total.SNPs.info.tsv \
         --key-fields 1 \
         --append-fields 2,3,4,5,6,7 \
-    > ${NAME}.total.SNPs.info.update.tsv
+        > ${NAME}.total.SNPs.info.update.tsv
+
     cat ${NAME}.total.SNPs.info.update.tsv | datamash check
+
     cat ${NAME}.total.SNPs.info.update.tsv |
         perl -nla -F"\t" -e '
             my $loca = $F[0];
@@ -685,7 +687,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
             my $position = $2;
             print qq{$Chr\t$position\t$position\t$F[1]\t$F[2]};
         ' \
-    > ${NAME}.total.SNPs.update.tsv
+        > ${NAME}.total.SNPs.update.tsv
 done
 
 wc -l *.total.SNPs.update.tsv |
@@ -697,11 +699,11 @@ wc -l *.total.SNPs.update.tsv |
 ```
 
 | File                                 | Count |
-|:-------------------------------------|:------|
-| Scer_n128_Seub.total.SNPs.update.tsv | 27323 |
-| Scer_n128_Spar.total.SNPs.update.tsv | 44251 |
-| Scer_n7_Spar.total.SNPs.update.tsv   | 26814 |
-| Scer_n7p_Spar.total.SNPs.update.tsv  | 35078 |
+|--------------------------------------|------:|
+| Scer_n128_Seub.total.SNPs.update.tsv | 27207 |
+| Scer_n128_Spar.total.SNPs.update.tsv | 44058 |
+| Scer_n7_Spar.total.SNPs.update.tsv   | 26584 |
+| Scer_n7p_Spar.total.SNPs.update.tsv  | 34959 |
 
 Upload ${NAME}.total.SNPs.update.tsv to https://asia.ensembl.org/Tools/VEP
 
