@@ -525,15 +525,13 @@ wc -l *.total.SNPs.info.tsv |
 ```shell
 cd ~/data/mrna-structure/vcf
 
-pigz -dcf 1011Matrix.gvcf.gz > 1011Matrix.gvcf
+bcftools index 1011Matrix.gvcf.gz
 
 # 1011
-cat 1011Matrix.gvcf |
-    perl -nla -F"\t" -e '
-        /^\#\#/ and next;
-        splice @F, 8;
-        print join qq{\t}, @F;
-    ' \
+gzip -dcf 1011Matrix.gvcf.gz |
+    pv |
+    grep -v "^#" |
+    tsv-select -f 1-8 \
     > 1011Matrix.tsv
 
 cat 1011Matrix.tsv |
@@ -587,8 +585,15 @@ cut -f 1 1011Matrix.ext.tsv > 1011Matrix.ext.txt
 #    s/chromosome4\t88:2:49\..*\n//g;
 #    s/chromosome4\t88:268.*\n//g;
 #    ' 1011Matrix.gvcf
-bcftools view 1011Matrix.gvcf -s CCL,BBQ,BBS,BFP,BTG,CLC,CLB,CLD,BAM,BAQ,BAG,BAH,BAL,AMH,CEG,CEI,CCQ,CCR,CCS,BAK,BAI,ACQ,CCN,CDL,SACE_YCR,BMA,AKM,BMB,BMC,SACE_MAL,SACE_YCY,BAN,BAP,CMP,CCH,ACC,CCC,CCD,CCE,CCF,CCG,CCI,CMQ,CDF,CDG,CDH,CDI,AVI,ACD,ANF,ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
+bcftools view 1011Matrix.gvcf.gz -s \
+CCL,BBQ,BBS,BFP,BTG,CLC,CLB,CLD,BAM,BAQ,\
+BAG,BAH,BAL,AMH,CEG,CEI,CCQ,CCR,CCS,BAK,\
+BAI,ACQ,CCN,CDL,SACE_YCR,BMA,AKM,BMB,BMC,SACE_MAL,\
+SACE_YCY,BAN,BAP,CMP,CCH,ACC,CCC,CCD,CCE,CCF,\
+CCG,CCI,CMQ,CDF,CDG,CDH,CDI,AVI,ACD,ANF,\
+ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
     bcftools +fill-tags -o 1011Matrix.wild.gvcf
+
 cat 1011Matrix.wild.gvcf |
     perl -nla -F"\t" -e '
         /^\#\#/ and next;
@@ -641,14 +646,22 @@ cat 1011Matrix.wild.tsv |
     > 1011Matrix.ext.wild.tsv
 cut -f 1 1011Matrix.ext.wild.tsv > 1011Matrix.ext.wild.txt
 
-rm 1011Matrix.gvcf 1011Matrix.wild.gvcf
+rm 1011Matrix.wild.gvcf
+
+wc -l *.tsv |
+    grep -v "total$" |
+    datamash reverse -W |
+    (echo -e "File\tCount" && cat) |
+    mlr --itsv --omd cat
 
 ```
 
 | File                    |   Count |
-|:------------------------|--------:|
-| 1011Matrix.ext.tsv      | 1544488 |
-| 1011Matrix.ext.wild.tsv | 1544485 |
+|-------------------------|--------:|
+| 1011Matrix.ext.tsv      | 1544490 |
+| 1011Matrix.ext.wild.tsv | 1544490 |
+| 1011Matrix.tsv          | 1754866 |
+| 1011Matrix.wild.tsv     | 1754867 |
 
 ## VEP
 
