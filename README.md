@@ -381,6 +381,9 @@ cat ../sgd/saccharomyces_cerevisiae.gff |
     > protein_coding_list.csv
 # extract mRNAs and their positions from gff
 # output format: 2 cols for anno (col1) and pos (col2)
+# spanr gff would not keep annotation names
+# in the .gff, some mRNAs were alternative transcripts
+# thus ID=(.*)_mRNA will only keep the mRNA without other transcripts
 
 mkdir -p mRNAs
 cat protein_coding_list.csv |
@@ -393,6 +396,9 @@ cat protein_coding_list.csv |
 #I: 335-649
 #
 # So the step would convert .csv to .yml for each mRNA
+# only those mRNAs with annotation, that without splicing transcripts, were extracted
+# a file called .yml will be replaced
+rm mRNAs/.yml
 spanr merge mRNAs/*.yml -o mRNAs.merge.yml
 # spanr merge could combine all ymls into one
 rm -fr mRNAs
@@ -401,6 +407,7 @@ rm -fr mRNAs
 cut -d, -f 2 protein_coding_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
 # -m, --minimum <minimum>: Set the minimum depth of coverage [default: 1]
+# the point of position which covered twice will be kept
 
 spanr statop \
     ../blast/S288c.sizes \
@@ -411,6 +418,7 @@ spanr statop \
         $F[4] == 0 and print $F[0];
     ' \
     > non-overlapped.lst
+# --all: Only write whole genome stats
 
 # PARS genes
 cat non-overlapped.lst |
