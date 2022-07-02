@@ -856,8 +856,11 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     perl ~/Scripts/pars/program/count_ACGT_percent.pl \
         --file process/${NAME}.gene_variation.process.yml \
         --varfold process/${NAME}.gene_variation.fold_class.tsv \
-        --output result/${NAME}/${NAME}.gene_variation.fold_class.csv
+        --output result/${NAME}/fold_class.tsv
+
+    datamash check < result/${NAME}/fold_class.tsv
 done
+#2937 lines, 44 fields
 
 ```
 
