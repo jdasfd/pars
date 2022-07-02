@@ -471,7 +471,7 @@ cd ~/data/mrna-structure/gene-filter
 
 # PARS slices
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     mkdir -p PARS_${NAME}
 
     cat ${NAME}.intact.lst |
@@ -482,30 +482,23 @@ done
 
 # SNP list
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     mkdir -p SNP_${NAME}
 
     cat ${NAME}.intact.lst |
         parallel --no-run-if-empty --linebuffer -k -j 12 "
-           fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o SNP_${NAME}/{}.SNPs.tsv
+            fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o stdout |
+                sed 's/\$/\t{}/' \
+                > SNP_${NAME}/{}.tsv
         "
 
-    cat ${NAME}.intact.lst |
-        while read i; do
-            file=SNP_${NAME}/${i}.SNPs.tsv
-            export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
-            cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
-            unset prefix
-            unset file
-        done
-    rm -fr SNP_${NAME}/*.SNPs.tsv
-
+    #loccation,REF,ALT,mutant_to,freq,occured,gene
     cat SNP_${NAME}/*.tsv |
-        perl -nla -F"\t" -e 'print qq{$F[4]\t$F[5]\t$F[6]\t$F[8]\t$F[9]\t$F[7]\t$F[13]};' > ${NAME}.total.SNPs.info.tsv #loccation,REF,ALT,mutant_to,freq,occured,gene
-
+        tsv-select -f 5,6,7,9,10,8,14 \
+        > ${NAME}.SNPs.tsv
 done
 
-wc -l *.total.SNPs.info.tsv |
+wc -l *.SNPs.tsv |
     grep -v "total$" |
     datamash reverse -W |
     (echo -e "File\tCount" && cat) |
@@ -513,12 +506,12 @@ wc -l *.total.SNPs.info.tsv |
 
 ```
 
-| File                               | Count |
-|------------------------------------|------:|
-| Scer_n128_Seub.total.SNPs.info.tsv | 30696 |
-| Scer_n128_Spar.total.SNPs.info.tsv | 50046 |
-| Scer_n7_Spar.total.SNPs.info.tsv   | 29781 |
-| Scer_n7p_Spar.total.SNPs.info.tsv  | 38353 |
+| File                    | Count |
+|-------------------------|------:|
+| Scer_n128_Seub.SNPs.tsv | 30696 |
+| Scer_n128_Spar.SNPs.tsv | 50046 |
+| Scer_n7_Spar.SNPs.tsv   | 29781 |
+| Scer_n7p_Spar.SNPs.tsv  | 38353 |
 
 ## VCF of 1002 project
 
