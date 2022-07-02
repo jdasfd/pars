@@ -12,7 +12,7 @@ brew tap brewsci/bio
 brew install raxml
 
 brew tap wang-q/tap
-brew install faops lastz multiz sparsemem
+brew install faops lastz multiz sparsemem intspan
 
 curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_dep.sh | bash
 
@@ -22,6 +22,8 @@ curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_
 
 ```shell
 cpanm App::Fasops App::Rangeops App::Egaz
+
+cpanm Statistics::ChisqIndep
 
 ```
 
