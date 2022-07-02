@@ -418,6 +418,7 @@ spanr statop \
         $F[4] == 0 and print $F[0];
     ' \
     > non-overlapped.lst
+# spanr statop: Coverage on chrosomes for one YAML crossed another
 # --all: Only write whole genome stats
 
 # PARS genes
