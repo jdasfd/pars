@@ -5,7 +5,7 @@
 ### Homebrew packages
 
 ```shell
-brew install parallel pigz wget aria2
+brew install parallel pigz wget aria2 pv
 brew install bcftools blast samtools mafft
 
 brew tap brewsci/bio
@@ -143,11 +143,9 @@ cd ~/data/mrna-structure/download/
 
 aria2c -c http://1002genomes.u-strasbg.fr/files/1011Assemblies.tar.gz
 
-#tar -zxvf 1011Assemblies.tar.gz
-
 ```
 
-## Download vcf from the 1002 project
+## Download files from the 1002 project
 
 ```shell
 mkdir -p ~/data/mrna-structure/vcf
@@ -365,32 +363,33 @@ perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
 mkdir -p ~/data/mrna-structure/gene-filter
 cd ~/data/mrna-structure/gene-filter
 
-# sgd/saccharomyces_cerevisiae.gff → protein coding gene list
+# sgd/saccharomyces_cerevisiae.gff → gene list
 cat ../sgd/saccharomyces_cerevisiae.gff |
     perl -nla -e '
         next if /^#/;
-        next unless $F[2] eq q{mRNA};
+        next unless $F[2] eq q{gene};
         my $annotation = $F[8];
-        $annotation =~ /ID=(.*)_mRNA;Name=/;
+        $annotation =~ /ID=(.*);Name=/ or next;
         my $ID = $1;
         my $chr = $F[0];
         $chr =~ s/^chr//i;
         next if $chr eq q{mt}; # Skip genes on mitochondria
         print join qq{,}, $ID, qq{$chr($F[6]):$F[3]-$F[4]};
     ' \
-    > protein_coding_list.csv
+    > gene_list.csv
 # extract mRNAs and their positions from gff
 # output format: 2 cols for anno (col1) and pos (col2)
 # spanr gff would not keep annotation names
 # in the .gff, some mRNAs were alternative transcripts
 # thus ID=(.*)_mRNA will only keep the mRNA without other transcripts
 
-mkdir -p mRNAs
-cat protein_coding_list.csv |
+mkdir -p genes
+cat gene_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
         >&2 echo {1}
-        echo {2} | spanr cover stdin -o mRNAs/{1}.yml
+        echo {2} | spanr cover stdin -o genes/{1}.yml
     '
+
 # echo 'YAL069W,I(+):335-649' | spanr cover stdin
 #---
 #I: 335-649
@@ -398,20 +397,18 @@ cat protein_coding_list.csv |
 # So the step would convert .csv to .yml for each mRNA
 # only those mRNAs with annotation, that without splicing transcripts, were extracted
 # a file called .yml will be replaced
-rm mRNAs/.yml
-spanr merge mRNAs/*.yml -o mRNAs.merge.yml
-# spanr merge could combine all ymls into one
-rm -fr mRNAs
+spanr merge genes/*.yml -o genes.merge.yml
+rm -fr genes
 
 # overlapped regions
-cut -d, -f 2 protein_coding_list.csv |
+cut -d, -f 2 gene_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
 # -m, --minimum <minimum>: Set the minimum depth of coverage [default: 1]
 # the point of position which covered twice will be kept
 
 spanr statop \
     ../blast/S288c.sizes \
-    mRNAs.merge.yml overlapped.yml \
+    genes.merge.yml overlapped.yml \
     --op intersect --all -o stdout |
     grep -v "^key" |
     perl -nla -F, -e '
@@ -445,7 +442,7 @@ cat PARS_gene_list.csv |
 spanr merge PARS/*.yml -o PARS.merge.yml
 rm -fr PARS
 
-spanr some mRNAs.merge.yml PARS-non-overlapped.lst -o mRNAs.non-overlapped.yml
+spanr some genes.merge.yml PARS-non-overlapped.lst -o genes.non-overlapped.yml
 #spanr split mRNAs.non-overlapped.yml -o mRNAs
 
 spanr some PARS.merge.yml PARS-non-overlapped.lst -o PARS.non-overlapped.yml
@@ -458,27 +455,27 @@ spanr split PARS.non-overlapped.yml -o PARS
 ```shell
 cd ~/data/mrna-structure/gene-filter
 
-pigz -dcf ../alignment/n7/Scer_n7_Spar_refined/*.gz |
+gzip -dcf ../alignment/n7/Scer_n7_Spar_refined/*.gz |
     pigz > Scer_n7_Spar.fas.gz
-pigz -dcf ../alignment/n7p/Scer_n7p_Spar_refined/*.gz |
+gzip -dcf ../alignment/n7p/Scer_n7p_Spar_refined/*.gz |
     pigz > Scer_n7p_Spar.fas.gz
 
-pigz -dcf ../alignment/n128/Scer_n128_Spar_refined/*.gz |
+gzip -dcf ../alignment/n128/Scer_n128_Spar_refined/*.gz |
     pigz > Scer_n128_Spar.fas.gz
-pigz -dcf ../alignment/n128/Scer_n128_Seub_refined/*.gz |
+gzip -dcf ../alignment/n128/Scer_n128_Seub_refined/*.gz |
     pigz > Scer_n128_Seub.fas.gz
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     fasops covers -n S288c ${NAME}.fas.gz -o ${NAME}.yml
 done
 
 # intact mRNAs
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
-    jrunlist statop \
+    >&2 echo "==> ${NAME}"
+    spanr statop \
         ../blast/S288c.sizes \
-        mRNAs.non-overlapped.yml ${NAME}.yml \
+        genes.non-overlapped.yml ${NAME}.yml \
         --op intersect --all -o stdout |
         grep -v "^key" |
         perl -nla -F, -e '
@@ -496,13 +493,13 @@ wc -l *.lst ../blast/*.tsv* |
 ```
 
 | File                              | Count |
-|:----------------------------------|------:|
-| non-overlapped.lst                |  5344 |
-| PARS-non-overlapped.lst           |  2494 |
-| Scer_n128_Seub.intact.lst         |  1500 |
-| Scer_n128_Spar.intact.lst         |  1997 |
-| Scer_n7p_Spar.intact.lst          |  2270 |
-| Scer_n7_Spar.intact.lst           |  2234 |
+|-----------------------------------|------:|
+| PARS-non-overlapped.lst           |  2493 |
+| Scer_n128_Seub.intact.lst         |  1490 |
+| Scer_n128_Spar.intact.lst         |  1985 |
+| Scer_n7_Spar.intact.lst           |  2209 |
+| Scer_n7p_Spar.intact.lst          |  2266 |
+| non-overlapped.lst                |  5347 |
 | ../blast/sce_genes.blast.tsv      |  2980 |
 | ../blast/sce_genes.blast.tsv.skip |   216 |
 
@@ -532,14 +529,14 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
            fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o SNP_${NAME}/{}.SNPs.tsv
         "
 
-    cat ${NAME}.intact.lst | while read i
-    do
-        file=SNP_${NAME}/${i}.SNPs.tsv
-        export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
-        cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
-        unset prefix
-        unset file
-    done
+    cat ${NAME}.intact.lst |
+        while read i; do
+            file=SNP_${NAME}/${i}.SNPs.tsv
+            export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
+            cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
+            unset prefix
+            unset file
+        done
     rm -fr SNP_${NAME}/*.SNPs.tsv
 
     cat SNP_${NAME}/*.tsv |
@@ -556,26 +553,24 @@ wc -l *.total.SNPs.info.tsv |
 ```
 
 | File                               | Count |
-|:-----------------------------------|:------|
-| Scer_n128_Seub.total.SNPs.info.tsv | 30834 |
-| Scer_n128_Spar.total.SNPs.info.tsv | 50268 |
-| Scer_n7p_Spar.total.SNPs.info.tsv  | 38481 |
-| Scer_n7_Spar.total.SNPs.info.tsv   | 30038 |
+|------------------------------------|------:|
+| Scer_n128_Seub.total.SNPs.info.tsv | 30696 |
+| Scer_n128_Spar.total.SNPs.info.tsv | 50046 |
+| Scer_n7_Spar.total.SNPs.info.tsv   | 29781 |
+| Scer_n7p_Spar.total.SNPs.info.tsv  | 38353 |
 
 ## VCF of 1002 project
 
 ```shell
 cd ~/data/mrna-structure/vcf
 
-pigz -dcf 1011Matrix.gvcf.gz > 1011Matrix.gvcf
+bcftools index 1011Matrix.gvcf.gz
 
 # 1011
-cat 1011Matrix.gvcf |
-    perl -nla -F"\t" -e '
-        /^\#\#/ and next;
-        splice @F, 8;
-        print join qq{\t}, @F;
-    ' \
+gzip -dcf 1011Matrix.gvcf.gz |
+    pv |
+    grep -v "^#" |
+    tsv-select -f 1-8 \
     > 1011Matrix.tsv
 
 cat 1011Matrix.tsv |
@@ -629,8 +624,15 @@ cut -f 1 1011Matrix.ext.tsv > 1011Matrix.ext.txt
 #    s/chromosome4\t88:2:49\..*\n//g;
 #    s/chromosome4\t88:268.*\n//g;
 #    ' 1011Matrix.gvcf
-bcftools view 1011Matrix.gvcf -s CCL,BBQ,BBS,BFP,BTG,CLC,CLB,CLD,BAM,BAQ,BAG,BAH,BAL,AMH,CEG,CEI,CCQ,CCR,CCS,BAK,BAI,ACQ,CCN,CDL,SACE_YCR,BMA,AKM,BMB,BMC,SACE_MAL,SACE_YCY,BAN,BAP,CMP,CCH,ACC,CCC,CCD,CCE,CCF,CCG,CCI,CMQ,CDF,CDG,CDH,CDI,AVI,ACD,ANF,ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
+bcftools view 1011Matrix.gvcf.gz -s \
+CCL,BBQ,BBS,BFP,BTG,CLC,CLB,CLD,BAM,BAQ,\
+BAG,BAH,BAL,AMH,CEG,CEI,CCQ,CCR,CCS,BAK,\
+BAI,ACQ,CCN,CDL,SACE_YCR,BMA,AKM,BMB,BMC,SACE_MAL,\
+SACE_YCY,BAN,BAP,CMP,CCH,ACC,CCC,CCD,CCE,CCF,\
+CCG,CCI,CMQ,CDF,CDG,CDH,CDI,AVI,ACD,ANF,\
+ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
     bcftools +fill-tags -o 1011Matrix.wild.gvcf
+
 cat 1011Matrix.wild.gvcf |
     perl -nla -F"\t" -e '
         /^\#\#/ and next;
@@ -683,14 +685,22 @@ cat 1011Matrix.wild.tsv |
     > 1011Matrix.ext.wild.tsv
 cut -f 1 1011Matrix.ext.wild.tsv > 1011Matrix.ext.wild.txt
 
-rm 1011Matrix.gvcf 1011Matrix.wild.gvcf
+rm 1011Matrix.wild.gvcf
+
+wc -l *.tsv |
+    grep -v "total$" |
+    datamash reverse -W |
+    (echo -e "File\tCount" && cat) |
+    mlr --itsv --omd cat
 
 ```
 
 | File                    |   Count |
-|:------------------------|--------:|
-| 1011Matrix.ext.tsv      | 1544488 |
-| 1011Matrix.ext.wild.tsv | 1544485 |
+|-------------------------|--------:|
+| 1011Matrix.ext.tsv      | 1544490 |
+| 1011Matrix.ext.wild.tsv | 1544490 |
+| 1011Matrix.tsv          | 1754866 |
+| 1011Matrix.wild.tsv     | 1754867 |
 
 ## VEP
 
@@ -704,8 +714,10 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         -f ../gene-filter/${NAME}.total.SNPs.info.tsv \
         --key-fields 1 \
         --append-fields 2,3,4,5,6,7 \
-    > ${NAME}.total.SNPs.info.update.tsv
+        > ${NAME}.total.SNPs.info.update.tsv
+
     cat ${NAME}.total.SNPs.info.update.tsv | datamash check
+
     cat ${NAME}.total.SNPs.info.update.tsv |
         perl -nla -F"\t" -e '
             my $loca = $F[0];
@@ -714,7 +726,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
             my $position = $2;
             print qq{$Chr\t$position\t$position\t$F[1]\t$F[2]};
         ' \
-    > ${NAME}.total.SNPs.update.tsv
+        > ${NAME}.total.SNPs.update.tsv
 done
 
 wc -l *.total.SNPs.update.tsv |
@@ -726,11 +738,11 @@ wc -l *.total.SNPs.update.tsv |
 ```
 
 | File                                 | Count |
-|:-------------------------------------|:------|
-| Scer_n128_Seub.total.SNPs.update.tsv | 27323 |
-| Scer_n128_Spar.total.SNPs.update.tsv | 44251 |
-| Scer_n7_Spar.total.SNPs.update.tsv   | 26814 |
-| Scer_n7p_Spar.total.SNPs.update.tsv  | 35078 |
+|--------------------------------------|------:|
+| Scer_n128_Seub.total.SNPs.update.tsv | 27207 |
+| Scer_n128_Spar.total.SNPs.update.tsv | 44058 |
+| Scer_n7_Spar.total.SNPs.update.tsv   | 26584 |
+| Scer_n7p_Spar.total.SNPs.update.tsv  | 34959 |
 
 Upload ${NAME}.total.SNPs.update.tsv to https://asia.ensembl.org/Tools/VEP
 
