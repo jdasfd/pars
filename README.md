@@ -889,11 +889,91 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
                 print qq{location\tREF\tALT\tmutant_to\tfreq\toccured\tgene\tallele\tconsequence\tCDS_position\tamino_acids\tcodons\texisting_variation};
             }
         ' \
-        > result/${NAME}/${NAME}.tsv
+        > result/${NAME}/SNPs.vep.tsv
+    datamash check < result/${NAME}/SNPs.vep.tsv
+done
+#26507 lines, 13 fields
+#34858 lines, 13 fields
+#43871 lines, 13 fields
+#27109 lines, 13 fields
 
-    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat result/${NAME}/SNPs.vep.tsv |
+        tsv-join \
+            -f result/${NAME}/fold_class.tsv \
+            -H --key-fields gene \
+            --append-fields 2-44 \
+        > result/${NAME}/SNPs.fold_class.tsv
+    datamash check < result/${NAME}/SNPs.fold_class.tsv
+done
+#26053 lines, 56 fields
+#34351 lines, 56 fields
+#43168 lines, 56 fields
+#26682 lines, 56 fields
+
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat process/${NAME}.gene_variation.var_pars.tsv |
+        tsv-select -H -e gene |
+        sed '1 s/^name/location/' |
+        tsv-join \
+            -f result/${NAME}/SNPs.fold_class.tsv\
+            -H --key-fields location \
+            --append-fields 2-56 \
+        > result/${NAME}/data_SNPs_PARS_mRNA.tsv
+    datamash check < result/${NAME}/data_SNPs_PARS_mRNA.tsv
+done
+#25892 lines, 63 fields
+#34153 lines, 63 fields
+#42905 lines, 63 fields
+#26474 lines, 63 fields
+
+cat result/Scer_n7_Spar/data_SNPs_PARS_mRNA.tsv |
+    tsv-summarize -H --count --group-by consequence
+#consequence     count
+#missense_variant        6576
+#synonymous_variant      15666
+#intergenic_variant      3540
+#stop_lost       6
+#stop_retained_variant   24
+#downstream_gene_variant 26
+#stop_gained     25
+#upstream_gene_variant   22
+#start_lost      6
+
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --str-ne "CDS_position:-" \
+        > result/${NAME}/data_SNPs_PARS_cds.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --str-eq "CDS_position:-" \
+        > result/${NAME}/data_SNPs_PARS_utr.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --or --str-eq "consequence:stop_retained_variant" --str-eq "consequence:synonymous_variant" \
+        > result/${NAME}/data_SNPs_PARS_syn.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --or --str-eq "consequence:missense_variant" --str-eq "consequence:start_lost" --str-eq "consequence:stop_gained" --str-eq "consequence:stop_lost" \
+        > result/${NAME}/data_SNPs_PARS_nsy.tsv
 done
 
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    printf "Type\tSNPs\tGenes\n" > result/${NAME}/count.tsv
+    for TYPE in mRNA cds utr syn nsy; do
+        echo ${TYPE}
+        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+            tsv-summarize -H --count |
+            sed '1d'
+        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+            tsv-summarize -H --unique-count gene |
+            sed '1d'
+    done |
+    paste - - - \
+    >> result/${NAME}/count.tsv
+done
+
+#    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}
 ```
 
 ### count A/T <-> G/C
