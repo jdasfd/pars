@@ -391,6 +391,10 @@ cat protein_coding_list.csv |
         >&2 echo {1}
         echo {2} | spanr cover stdin -o mRNAs/{1}.yml
     '
+rm mRNAs/.yml
+spanr merge mRNAs/*.yml -o mRNAs.merge.yml
+rm -fr mRNAs
+
 # echo 'YAL069W,I(+):335-649' | spanr cover stdin
 #---
 #I: 335-649
@@ -398,10 +402,6 @@ cat protein_coding_list.csv |
 # So the step would convert .csv to .yml for each mRNA
 # only those mRNAs with annotation, that without splicing transcripts, were extracted
 # a file called .yml will be replaced
-rm mRNAs/.yml
-spanr merge mRNAs/*.yml -o mRNAs.merge.yml
-# spanr merge could combine all ymls into one
-rm -fr mRNAs
 
 # overlapped regions
 cut -d, -f 2 protein_coding_list.csv |
