@@ -12,7 +12,7 @@ brew tap brewsci/bio
 brew install raxml
 
 brew tap wang-q/tap
-brew install faops lastz multiz sparsemem
+brew install faops lastz multiz sparsemem intspan
 
 curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_dep.sh | bash
 
@@ -22,6 +22,8 @@ curl -fsSL https://raw.githubusercontent.com/wang-q/App-Egaz/master/share/check_
 
 ```shell
 cpanm App::Fasops App::Rangeops App::Egaz
+
+cpanm Statistics::ChisqIndep
 
 ```
 
@@ -502,7 +504,7 @@ cd ~/data/mrna-structure/gene-filter
 
 # PARS slices
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     mkdir -p PARS_${NAME}
 
     cat ${NAME}.intact.lst |
@@ -513,30 +515,23 @@ done
 
 # SNP list
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
     mkdir -p SNP_${NAME}
 
     cat ${NAME}.intact.lst |
         parallel --no-run-if-empty --linebuffer -k -j 12 "
-           fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o SNP_${NAME}/{}.SNPs.tsv
+            fasops vars --outgroup --nocomplex PARS_${NAME}/{}.fas -o stdout |
+                sed 's/\$/\t{}/' \
+                > SNP_${NAME}/{}.tsv
         "
 
-    cat ${NAME}.intact.lst |
-        while read i; do
-            file=SNP_${NAME}/${i}.SNPs.tsv
-            export prefix=$(echo ${file} | xargs basename | perl -p -e 's/\.SNPs\.tsv//')
-            cat ${file} | perl -nl -e 'print "$_\t$ENV{prefix}"' > SNP_${NAME}/${i}.tsv
-            unset prefix
-            unset file
-        done
-    rm -fr SNP_${NAME}/*.SNPs.tsv
-
+    #loccation,REF,ALT,mutant_to,freq,occured,gene
     cat SNP_${NAME}/*.tsv |
-        perl -nla -F"\t" -e 'print qq{$F[4]\t$F[5]\t$F[6]\t$F[8]\t$F[9]\t$F[7]\t$F[13]};' > ${NAME}.total.SNPs.info.tsv #loccation,REF,ALT,mutant_to,freq,occured,gene
-
+        tsv-select -f 5,6,7,9,10,8,14 \
+        > ${NAME}.SNPs.tsv
 done
 
-wc -l *.total.SNPs.info.tsv |
+wc -l *.SNPs.tsv |
     grep -v "total$" |
     datamash reverse -W |
     (echo -e "File\tCount" && cat) |
@@ -544,12 +539,12 @@ wc -l *.total.SNPs.info.tsv |
 
 ```
 
-| File                               | Count |
-|------------------------------------|------:|
-| Scer_n128_Seub.total.SNPs.info.tsv | 30696 |
-| Scer_n128_Spar.total.SNPs.info.tsv | 50046 |
-| Scer_n7_Spar.total.SNPs.info.tsv   | 29781 |
-| Scer_n7p_Spar.total.SNPs.info.tsv  | 38353 |
+| File                    | Count |
+|-------------------------|------:|
+| Scer_n128_Seub.SNPs.tsv | 30696 |
+| Scer_n128_Spar.SNPs.tsv | 50046 |
+| Scer_n7_Spar.SNPs.tsv   | 29781 |
+| Scer_n7p_Spar.SNPs.tsv  | 38353 |
 
 ## VCF of 1002 project
 
@@ -701,27 +696,27 @@ mkdir -p ~/data/mrna-structure/vep
 cd ~/data/mrna-structure/vep
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    tsv-join --z \
-        ~/data/mrna-structure/vcf/1011Matrix.ext.txt \
-        -f ../gene-filter/${NAME}.total.SNPs.info.tsv \
+    tsv-join -z \
+        ../vcf/1011Matrix.ext.txt \
+        -f ../gene-filter/${NAME}.SNPs.tsv \
         --key-fields 1 \
-        --append-fields 2,3,4,5,6,7 \
-        > ${NAME}.total.SNPs.info.update.tsv
+        --append-fields 2-7 \
+        > ${NAME}.SNPs.tsv
 
-    cat ${NAME}.total.SNPs.info.update.tsv | datamash check
+    cat ${NAME}.SNPs.tsv | datamash check
 
-    cat ${NAME}.total.SNPs.info.update.tsv |
+    cat ${NAME}.SNPs.tsv |
         perl -nla -F"\t" -e '
-            my $loca = $F[0];
-            $loca =~ /^(.*):(.*)/;
-            my $Chr = $1;
-            my $position = $2;
-            print qq{$Chr\t$position\t$position\t$F[1]\t$F[2]};
+            my $loc = $F[0];
+            $loc =~ /^(.*):(.*)/;
+            my $chr = $1;
+            my $pos = $2;
+            print qq{$chr\t$pos\t$pos\t$F[1]\t$F[2]};
         ' \
-        > ${NAME}.total.SNPs.update.tsv
+        > ${NAME}.upload.tsv
 done
 
-wc -l *.total.SNPs.update.tsv |
+wc -l *.upload.tsv |
     grep -v "total$" |
     datamash reverse -W |
     (echo -e "File\tCount" && cat) |
@@ -729,26 +724,26 @@ wc -l *.total.SNPs.update.tsv |
 
 ```
 
-| File                                 | Count |
-|--------------------------------------|------:|
-| Scer_n128_Seub.total.SNPs.update.tsv | 27207 |
-| Scer_n128_Spar.total.SNPs.update.tsv | 44058 |
-| Scer_n7_Spar.total.SNPs.update.tsv   | 26584 |
-| Scer_n7p_Spar.total.SNPs.update.tsv  | 34959 |
+| File                      | Count |
+|---------------------------|------:|
+| Scer_n128_Seub.upload.tsv | 27207 |
+| Scer_n128_Spar.upload.tsv | 44058 |
+| Scer_n7_Spar.upload.tsv   | 26584 |
+| Scer_n7p_Spar.upload.tsv  | 34959 |
 
-Upload ${NAME}.total.SNPs.update.tsv to https://asia.ensembl.org/Tools/VEP
+Upload `${NAME}.upload.tsv` to <https://asia.ensembl.org/Tools/VEP>
 
 * Species: Saccharomyces cerevisiae (Saccharomyces cerevisiae)
 * Additional_annotations:
     * Upstream/Downstream distance (bp): 1
 
-* Download VEP format profiles to `vep/`, and rename it to `${NAME}.total.SNPs.vep.txt`
+* Download VEP format profiles to `vep/`, and rename it to `${NAME}.vep.txt`
 
 ```shell
 cd ~/data/mrna-structure/vep
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    cat ${NAME}.total.SNPs.vep.txt |
+    cat ${NAME}.vep.txt |
         perl -nla -F"\t" -e '
             next if /^#/;
             my $loca = $F[1];
@@ -757,10 +752,10 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
             #location,allele,gene,consequence,CDS_position,amino_acids,codons,existing_variation
             print qq{$ID\t$F[2]\t$F[3]\t$F[6]\t$F[8]\t$F[10]\t$F[11]\t$F[12]};
         ' \
-    > ${NAME}.total.SNPs.vep.tsv
+    > ${NAME}.vep.tsv
 done
 
-wc -l *.total.SNPs.vep.tsv |
+wc -l *.vep.tsv |
     grep -v "total$" |
     datamash reverse -W |
     (echo -e "File\tCount" && cat) |
@@ -768,12 +763,12 @@ wc -l *.total.SNPs.vep.tsv |
 
 ```
 
-| File                              | Count |
-|:----------------------------------|:------|
-| Scer_n128_Seub.total.SNPs.vep.tsv | 27324 |
-| Scer_n128_Spar.total.SNPs.vep.tsv | 44252 |
-| Scer_n7_Spar.total.SNPs.vep.tsv   | 26818 |
-| Scer_n7p_Spar.total.SNPs.vep.tsv  | 35082 |
+| File                   | Count |
+|------------------------|------:|
+| Scer_n128_Seub.vep.tsv | 27208 |
+| Scer_n128_Spar.vep.tsv | 44059 |
+| Scer_n7_Spar.vep.tsv   | 26588 |
+| Scer_n7p_Spar.vep.tsv  | 34964 |
 
 ## Process PARS data
 
@@ -784,39 +779,38 @@ cd ~/data/mrna-structure/process
 perl ~/Scripts/pars/blastn_transcript.pl -f ../blast/sce_genes.blast -m 0
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    echo "==> ${NAME}"
+    >&2 echo "==> ${NAME}"
 
-    cat ../vep/${NAME}.total.SNPs.info.update.tsv |
-        perl -nla -F"\t" -e 'print  qq{$F[0]};' |
+    cat ../vep/${NAME}.SNPs.tsv |
+        tsv-select -f 1 |
         sort -u \
-        > ${NAME}.snp.gene.pos.txt
+        > ${NAME}.snp.rg
 
     perl ~/Scripts/pars/read_fold.pl \
         --pars ../PARS10 \
         --gene sce_genes.blast.tsv \
-        --pos  ${NAME}.snp.gene.pos.txt \
-        > ${NAME}_fail_pos.txt # review fail_pos.txt to find SNPs located in overlapped genes
+        --pos ${NAME}.snp.rg \
+        > ${NAME}_fail_pos.txt
+    # review fail_pos.txt to find SNPs located in overlapped genes
 
     perl ~/Scripts/pars/process_vars_in_fold.pl --file ${NAME}.gene_variation.yml
 done
 
-cd ~/data/mrna-structure/process
-
-#----------------------------------------------------------#
+#----------------------------#
 # gene
-#----------------------------------------------------------#
+#----------------------------#
+cd ~/data/mrna-structure/process
 
 # produce transcript set
 # YLR167W 568 chrXII 498888 499455 +
 cat sce_genes.blast.tsv |
     perl -nla -e 'print qq{$F[2]:$F[3]-$F[4]}' |
-    sort \
-    > sce_genes.pos.txt
-jrunlist cover sce_genes.pos.txt -o sce_genes.yml
+    sort |
+    spanr cover stdin -o sce_genes.yml
 
-#----------------------------------------------------------#
+#----------------------------#
 # intron
-#----------------------------------------------------------#
+#----------------------------#
 cat ../sgd/orf_coding_all.fasta |
     perl -n -MAlignDB::IntSpan -e '
         />/ or next;
@@ -830,9 +824,8 @@ cat ../sgd/orf_coding_all.fasta |
         my $hole = $intspan->holes;
 
         printf qq{%s:%s\n}, $chr, $hole->as_string if $hole->is_not_empty;
-    ' \
-    > sce_intron.pos.txt
-jrunlist cover sce_intron.pos.txt -o sce_intron.yml
+    ' |
+    spanr cover stdin -o sce_intron.yml
 
 # produce orf_genomic set
 cat ../sgd/orf_genomic_all.fasta |
@@ -850,100 +843,168 @@ cat ../sgd/orf_genomic_all.fasta |
         else {
             print qq{$1:$3-$2\n};
         }
-    ' \
-    > sce_orf_genomic.pos.txt
-jrunlist cover sce_orf_genomic.pos.txt -o sce_orf_genomic.yml
+    ' |
+    spanr cover stdin -o sce_orf_genomic.yml
 
-#----------------------------------------------------------#
-# utr
-#----------------------------------------------------------#
-jrunlist compare --op diff sce_genes.yml sce_orf_genomic.yml -o sce_utr.yml
-runlist convert sce_utr.yml -o sce_utr.pos.txt
+#----------------------------#
+# mRNA, utr, and CDS
+#----------------------------#
+spanr compare --op diff sce_genes.yml sce_orf_genomic.yml -o sce_utr.yml
 
-#----------------------------------------------------------#
-# mRNA
-#----------------------------------------------------------#
-jrunlist compare --op diff sce_genes.yml sce_intron.yml -o sce_mRNA.yml
-runlist convert sce_mRNA.yml -o sce_mRNA.pos.txt
+spanr compare --op diff sce_genes.yml sce_intron.yml -o sce_mRNA.yml
 
-#----------------------------------------------------------#
-# cds
-#----------------------------------------------------------#
-jrunlist compare --op diff sce_mRNA.yml sce_utr.yml -o sce_cds.yml
-runlist convert sce_cds.yml -o sce_cds.pos.txt
+spanr compare --op diff sce_mRNA.yml sce_utr.yml -o sce_cds.yml
 
 # Stats
-printf "| %s | %s | %s | %s |\n" \
-    "Name" "chrLength" "size" "coverage" \
-    > coverage.stat.md
-printf "|:--|--:|--:|--:|\n" >> coverage.stat.md
+for NAME in genes intron orf_genomic utr mRNA cds; do
+    spanr stat ../blast/S288c.sizes "sce_${NAME}.yml" --all |
+        sed '1 s/^/Name,/' |
+        sed "2 s/^/${NAME},/"
+done |
+    tsv-uniq |
+    mlr --icsv --omd cat
 
-for f in genes intron orf_genomic utr mRNA cds; do
-    printf "| %s | %s | %s | %s |\n" \
-        ${f} \
-        $(
-            jrunlist stat ../blast/S288c.sizes sce_${f}.yml --all -o stdout |
-                grep -v coverage |
-                sed "s/,/ /g"
-        )
-done >> coverage.stat.md
-
-cat coverage.stat.md
 
 ```
 
 | Name        | chrLength |    size | coverage |
-|:------------|----------:|--------:|---------:|
+|-------------|----------:|--------:|---------:|
 | genes       |  12071326 | 4236728 |   0.3510 |
-| intron      |  12071326 |   65144 |   0.0054 |
-| orf_genomic |  12071326 | 8895737 |   0.7369 |
-| utr         |  12071326 |  516701 |   0.0428 |
-| mRNA        |  12071326 | 4234684 |   0.3508 |
-| cds         |  12071326 | 3717983 |   0.3080 |
+| intron      |  12071326 |   65519 |   0.0054 |
+| orf_genomic |  12071326 | 8897088 |   0.7370 |
+| utr         |  12071326 |  516447 |   0.0428 |
+| mRNA        |  12071326 | 4234653 |   0.3508 |
+| cds         |  12071326 | 3718206 |   0.3080 |
 
 ## SNP
 
 ### count per gene GC content
 
 ```shell
+cd ~/data/mrna-structure
+
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    mkdir -p ~/data/mrna-structure/result/${NAME}
-    cd ~/data/mrna-structure/result/${NAME}
+    mkdir -p result/${NAME}
+
     perl ~/Scripts/pars/program/count_ACGT_percent.pl \
-        --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml \
-        --varfold ~/data/mrna-structure/process/${NAME}.gene_variation.fold_class.tsv \
-        --output ${NAME}.gene_variation.fold_class.csv
+        --file process/${NAME}.gene_variation.process.yml \
+        --varfold process/${NAME}.gene_variation.fold_class.tsv \
+        --output result/${NAME}/fold_class.tsv
+
+    datamash check < result/${NAME}/fold_class.tsv
 done
+#2937 lines, 44 fields
 
 ```
 
 ### count SNPs and gene
 
 ```shell
+cd ~/data/mrna-structure
+
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    cd ~/data/mrna-structure/result/${NAME}
-    tsv-join --z \
-        ~/data/mrna-structure/vep/${NAME}.total.SNPs.info.update.tsv \
-        -f ~/data/mrna-structure/vep/${NAME}.total.SNPs.vep.tsv \
+    mkdir -p result/${NAME}
+
+    tsv-join -z \
+        vep/${NAME}.SNPs.tsv \
+        -f vep/${NAME}.vep.tsv \
         --key-fields 1 \
-        --append-fields 2-8 \
-    >${NAME}.tsv
-    cat ${NAME}.tsv |
+        --append-fields 2-8 |
         perl -nla -F"\t" -e '
             if ($F[8] eq "-" || $F[6] eq $F[8]){
-                splice @F, 8, 1 ;
-                my $F = join ("\t",@F);
-                print qq{$F};
+                splice @F, 8, 1;
+                my $line = join ("\t", @F);
+                print qq{$line};
             }
             BEGIN{
                 print qq{location\tREF\tALT\tmutant_to\tfreq\toccured\tgene\tallele\tconsequence\tCDS_position\tamino_acids\tcodons\texisting_variation};
             }
         ' \
-    > ${NAME}_SNPs_total_info_vep_non_overlapped.tsv
-    rm ${NAME}.tsv
-    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}
+        > result/${NAME}/SNPs.vep.tsv
+    datamash check < result/${NAME}/SNPs.vep.tsv
+done
+#26507 lines, 13 fields
+#34858 lines, 13 fields
+#43871 lines, 13 fields
+#27109 lines, 13 fields
+
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat result/${NAME}/SNPs.vep.tsv |
+        tsv-join \
+            -f result/${NAME}/fold_class.tsv \
+            -H --key-fields gene \
+            --append-fields 2-44 \
+        > result/${NAME}/SNPs.fold_class.tsv
+    datamash check < result/${NAME}/SNPs.fold_class.tsv
+done
+#26053 lines, 56 fields
+#34351 lines, 56 fields
+#43168 lines, 56 fields
+#26682 lines, 56 fields
+
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat process/${NAME}.gene_variation.var_pars.tsv |
+        tsv-select -H -e gene |
+        sed '1 s/^name/location/' |
+        tsv-join \
+            -f result/${NAME}/SNPs.fold_class.tsv\
+            -H --key-fields location \
+            --append-fields 2-56 \
+        > result/${NAME}/data_SNPs_PARS_mRNA.tsv
+    datamash check < result/${NAME}/data_SNPs_PARS_mRNA.tsv
+done
+#25892 lines, 63 fields
+#34153 lines, 63 fields
+#42905 lines, 63 fields
+#26474 lines, 63 fields
+
+cat result/Scer_n7_Spar/data_SNPs_PARS_mRNA.tsv |
+    tsv-summarize -H --count --group-by consequence
+#consequence     count
+#missense_variant        6576
+#synonymous_variant      15666
+#intergenic_variant      3540
+#stop_lost       6
+#stop_retained_variant   24
+#downstream_gene_variant 26
+#stop_gained     25
+#upstream_gene_variant   22
+#start_lost      6
+
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --str-ne "CDS_position:-" \
+        > result/${NAME}/data_SNPs_PARS_cds.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --str-eq "CDS_position:-" \
+        > result/${NAME}/data_SNPs_PARS_utr.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --or --str-eq "consequence:stop_retained_variant" --str-eq "consequence:synonymous_variant" \
+        > result/${NAME}/data_SNPs_PARS_syn.tsv
+
+    cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
+        tsv-filter -H --or --str-eq "consequence:missense_variant" --str-eq "consequence:start_lost" --str-eq "consequence:stop_gained" --str-eq "consequence:stop_lost" \
+        > result/${NAME}/data_SNPs_PARS_nsy.tsv
 done
 
+for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
+    printf "Type\tSNPs\tGenes\n" > result/${NAME}/count.tsv
+    for TYPE in mRNA cds utr syn nsy; do
+        echo ${TYPE}
+        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+            tsv-summarize -H --count |
+            sed '1d'
+        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+            tsv-summarize -H --unique-count gene |
+            sed '1d'
+    done |
+    paste - - - \
+    >> result/${NAME}/count.tsv
+done
+
+#    Rscript ~/Scripts/pars/program/stat_SNPs.R -n ${NAME}
 ```
 
 ### count A/T <-> G/C
