@@ -32,13 +32,11 @@ Getopt::Long::GetOptions(
     'output|o=s' => \my $output,
 ) or Getopt::Long::HelpMessage(1);
 
-  
-my $csv_fh;
-open $csv_fh, '<',$file;;
+open my $csv_fh, '<', $file;
 
-open OUT,'>',$output;
+open my $out_fh, '>', $output;
 
-my ($stem_AT_GC,$stem_GC_AT,$loop_AT_GC,$loop_GC_AT);
+my ( $stem_AT_GC, $stem_GC_AT, $loop_AT_GC, $loop_GC_AT );
 
 while (<$csv_fh>) {
     chomp;
@@ -49,7 +47,7 @@ while (<$csv_fh>) {
             $stem_GC_AT = $content[2];
             $content[3] = $content[1] / ( $content[1] + $content[2] );
             my $content = join ",", @content;
-            open OUT,'>>',$output;
+            open OUT, '>>', $output;
             print OUT $content, "\n";
             next;
         }
@@ -59,7 +57,7 @@ while (<$csv_fh>) {
             $content[3] = $content[1] / ( $content[1] + $content[2] );
             my $obs =
               [ [ $stem_AT_GC, $stem_GC_AT ], [ $loop_AT_GC, $loop_GC_AT ] ];
-            my $chi = new Statistics::ChisqIndep;
+            my $chi = Statistics::ChisqIndep->new;
             $chi->load_data($obs);
             $chi->print_summary();
             my $chisq = ${$chi}{'chisq_statistic'};
@@ -67,8 +65,7 @@ while (<$csv_fh>) {
             $content[4] = $chisq;
             $content[5] = $P;
             my $content = join ",", @content;
-            open OUT,'>>',$output;
-            print OUT $content, "\n";
+            print {$out_fh} $content, "\n";
             next;
 
         }
@@ -78,13 +75,12 @@ while (<$csv_fh>) {
         $content[4] = "X2";
         $content[5] = "p-value";
         my $content = join ",", @content;
-        open OUT,'>>',$output;
-        print OUT $content, "\n";
+        print {$out_fh} $content, "\n";
 
     }
 }
 
 close $csv_fh;
-close OUT;
+close $out_fh;
 
 __END__
