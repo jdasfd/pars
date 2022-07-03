@@ -950,22 +950,28 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         > result/${NAME}/data_SNPs_PARS_utr.tsv
 
     cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
-        tsv-filter -H --or --str-eq "consequence:stop_retained_variant" --str-eq "consequence:synonymous_variant" \
+        tsv-filter -H --or \
+            --str-eq "consequence:stop_retained_variant" \
+            --str-eq "consequence:synonymous_variant" \
         > result/${NAME}/data_SNPs_PARS_syn.tsv
 
     cat result/${NAME}/data_SNPs_PARS_mRNA.tsv |
-        tsv-filter -H --or --str-eq "consequence:missense_variant" --str-eq "consequence:start_lost" --str-eq "consequence:stop_gained" --str-eq "consequence:stop_lost" \
+        tsv-filter -H --or \
+            --str-eq "consequence:missense_variant" \
+            --str-eq "consequence:start_lost" \
+            --str-eq "consequence:stop_gained" \
+            --str-eq "consequence:stop_lost" \
         > result/${NAME}/data_SNPs_PARS_nsy.tsv
 done
 
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
-    printf "Type\tSNPs\tGenes\n" > result/${NAME}/count.tsv
-    for TYPE in mRNA cds utr syn nsy; do
-        echo ${TYPE}
-        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+    printf "Area\tSNPs\tGenes\n" > result/${NAME}/count.tsv
+    for AREA in mRNA cds utr syn nsy; do
+        echo ${AREA}
+        cat result/${NAME}/data_SNPs_PARS_${AREA}.tsv |
             tsv-summarize -H --count |
             sed '1d'
-        cat result/${NAME}/data_SNPs_PARS_${TYPE}.tsv |
+        cat result/${NAME}/data_SNPs_PARS_${AREA}.tsv |
             tsv-summarize -H --unique-count gene |
             sed '1d'
     done |
@@ -985,8 +991,10 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar; do
     mkdir -p ~/data/mrna-structure/result/${NAME}/freq_each
 
     Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME}
-    for AREA  in mRNA cds utr syn nsy; do
-        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_each/PARS_${AREA}_stat.csv --output freq_each/PARS_${AREA}_stat_chi_square.csv
+    for AREA in mRNA cds utr syn nsy; do
+        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl \
+            --file freq_each/PARS_${AREA}_stat.csv \
+            --output freq_each/PARS_${AREA}_stat_chi_square.csv
     done
 done
 
@@ -996,9 +1004,13 @@ for NAME in Scer_n128_Spar Scer_n128_Seub; do
     mkdir -p ~/data/mrna-structure/result/${NAME}/freq_10
 
     Rscript ~/Scripts/pars/program/count_AT_GC.R -n ${NAME}
-    for AREA  in mRNA cds utr syn nsy; do
-        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_each/PARS_${AREA}_stat.csv --output freq_each/PARS_${AREA}_stat_chi_square.csv
-        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_10/PARS_${AREA}_stat_freq_10.csv --output freq_10/PARS_${AREA}_stat_freq_10_chi_square.csv
+    for AREA in mRNA cds utr syn nsy; do
+        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl \
+            --file freq_each/PARS_${AREA}_stat.csv \
+            --output freq_each/PARS_${AREA}_stat_chi_square.csv
+        perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl \
+            --file freq_10/PARS_${AREA}_stat_freq_10.csv \
+            --output freq_10/PARS_${AREA}_stat_freq_10_chi_square.csv
     done
 done
 
@@ -1011,14 +1023,16 @@ export NAME=Scer_n128_Spar
 cd ~/data/mrna-structure/result/${NAME}
 mkdir -p freq_10/stem_length
 
-perl ~/Scripts/pars/program/count_position_gene.pl --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml --origin data_SNPs_PARS_mRNA.csv --output data_SNPs_PARS_mRNA_pos.csv
+perl ~/Scripts/pars/program/count_position_gene.pl \
+    --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml \
+    --origin data_SNPs_PARS_mRNA.csv \
+    --output data_SNPs_PARS_mRNA_pos.csv
 
 Rscript ~/Scripts/pars/program/count_AT_GC_gene_trait.R -n ${NAME}
 
 for CATEGORY in stem_AT_GC stem_GC_AT loop_AT_GC loop_GC_AT; do
     cat freq_10/stem_length/PARS_mRNA_1_stat_${CATEGORY}_freq_10.csv | csv2tsv > list.tmp
-    for ((i=2; i<=15; i++))
-    do
+    for ((i=2; i<=15; i++)); do
         tsv-join \
             list.tmp \
             -f <(cat freq_10/stem_length/PARS_mRNA_${i}_stat_${CATEGORY}_freq_10.csv | csv2tsv) \
@@ -1072,8 +1086,13 @@ unset NAME
 export NAME=Scer_n128_Spar
 cd ~/data/mrna-structure/result/${NAME}
 for AREA in cds utr; do
-    perl ~/Scripts/pars/program/count_cut_range.pl --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml --cut ~/data/mrna-structure/process/sce_${AREA}.yml --output stem_loop_${AREA}_length.csv
-    perl ~/Scripts/pars/program/count_per_gene_ACGT_percent.pl --file data_SNPs_PARS_${AREA}.csv --output data_SNPs_PARS_${AREA}_per_gene_ATGC.csv
+    perl ~/Scripts/pars/program/count_cut_range.pl \
+        --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml \
+        --cut ~/data/mrna-structure/process/sce_${AREA}.yml \
+        --output stem_loop_${AREA}_length.csv
+    perl ~/Scripts/pars/program/count_per_gene_ACGT_percent.pl \
+        --file data_SNPs_PARS_${AREA}.csv \
+        --output data_SNPs_PARS_${AREA}_per_gene_ATGC.csv
 done
 
 Rscript ~/Scripts/pars/program/count_cds_utr.R -n ${NAME}
@@ -1320,25 +1339,37 @@ unset NAME
 
 ```shell
 export NAME=Scer_n128_Spar
+
 mkdir -p ~/data/mrna-structure/result/${NAME}.update/subpop
 cd ~/data/mrna-structure/result/${NAME}.update/subpop
 
 #get genelist by filtering strong selection from GO/KEGG annotation (mt) and deleting repeating item
-echo -e "YLR305C\nYHR037W\nYHR063C\nYML110C\nYDR232W\nYER183C\nYMR205C\nYER017C\nYDL126C\nYBR111C\nYBR085W\nYBL030C\nYDR477W\nYMR301C\nYOR153W\nYLR188W\nYPL270W\nYDR011W\nYBL022C\nYDR194C\nYDL181W\nYGR008C\nYDL203C\nYEL052W\nYHL021C\nYHR198C\nYIL087C\nYMR157C\nYOR215C\nYPR004C\nYHR199C\nYLR370C\nYJL178C\nYLR356W\nYNL315C\nYER155C\nYNL305C\nYPR113W\nYER026C\nYJR060W\nYPL215W\nYIL043C\nYLR390W-A\nYGR207C\nYKL137W\nYPL189C-A\nYPL132W\nYML129C\nYER141W\nYHR116W\nYLR380W\nYBR291C\nYBR037C\nYMR264W\nYML086C\nYDL174C\nYDL178W\nYGL120C\nYOR151C\nYLL006W\nYLR390W\nYOR246C\nYAR002C-A\nYGL002W\nYNL125C\nYPL078C\nYDR298C\nYJR121W\nYKL016C\nYDL004W\nYPL271W\nYDR377W\nYPR020W\nYBR039W\nYOL077W-A\nYKR052C\nYGL091C\nYLL027W\nYIL065C\nYLR077W\nYFL046W\nYNL168C\nYER004W\nYOR271C\nYGL225W\nYGL020C\nYBR004C\nYOR355W\nYLR091W\nYDL198C\nYGL008C\nYKL084W\nYOR020C\nYJR045C\nYPR067W\nYER048W-A\nYJL094C\nYCL064C\nYCL005W\nYIL070C\nYBR185C\nYOR298C-A\nYLR253W\nYKL053C-A\nYLR069C\nYOR232W\nYJR144W\nYCL044C\nYDR296W\nYKL195W\nYCL057C-A\nYGR235C\nYNL100W\nYMR002W\nYLR190W\nYML128C\nYOR354C\nYGR028W\nYLR203C\nYGR257C\nYCL033C\nYDR493W\nYMR145C\nYML120C\nYNL200C\nYHR179W\nYPR048W\nYER125W\nYHR086W\nYGR147C\nYPR149W\nYHR042W\nYPL226W\nYKL120W\nYBR129C\nYKR065C\nYLR008C\nYGR178C\nYGR193C\nYGR222W\nYNL003C\nYBR106W\nYGL023C\nYMR129W\nYFL005W\nYOR089C\nYFL038C\nYER031C\nYML001W\nYEL037C\nYKL205W\nYLR084C\nYNR018W\nYLR059C\nYPR165W\nYDR233C\nYNL063W\nYHR083W\nYNL026W\nYKR042W\nYDR511W\nYBR269C\nYGL228W\nYIL016W\nYEL059C-A\nYML052W\nYPL105C\nYML072C\nYBR091C\nYOR297C\nYGR033C\nYJL054W\nYKL056C\nYGR082W\nYNL131W\nYMR203W\nYPR133W-A\nYOR045W\nYNL070W\nYCR083W\nYLR193C\nYOL129W\nYLR090W\nYMR241W\nYMR152W\nYBR054W\nYHR017W\nYDR326C\nYOL109W\nYNL310C\nYMR243C\nYOR221C\nYMR108W\nYNR016C\nYBL015W\nYOL140W\nYLR304C\nYJL200C\nYKL192C\nYKL094W\nYIL124W\nYJL005W\nYDR226W\nYLR089C\nYMR083W\nYGL256W\nYOR374W\nYPL061W\nYIL125W\nYDR148C\nYJR062C\nYDR046C\nYHR189W\nYER078C\nYEL063C\nYKL106W\nYLR027C\nYDR375C\nYOL066C\nYDL168W\nYJL130C\nYHR190W\nYIR038C\nYJR073C\nYJR057W\nYHR208W\nYLR259C\nYNR001C\nYCR005C\nYLL009C\nYGR155W\nYJR048W\nYGL187C\nYMR256C\nYLR395C\nYDL067C\nYGL191W\nYLR038C\nYNL052W\nYKL087C\nYKL150W\nYKR066C\nYFL018C\nYNL071W\nYJR016C\nYPR183W\nYKR001C\nYLL001W\nYKR071C\nYOL021C\nYOR176W\nYDL120W\nYIL134W\nYCR004C\nYKL060C\nYPL262W\nYEL047C\nYBR229C\nYBR196C\nYMR062C\nYDL215C\nYDL171C\nYGL245W\nYHL032C\nYOL059W\nYAL044C\nYMR189W\nYBR263W\nYER020W\nYMR110C\nYGL253W\nYPR033C\nYPL148C\nYAL039C\nYDR234W\nYGL221C\nYDL157C\nYDR061W\nYGR266W\nYJL127C-B\nYJL133C-A\nYJR085C\nYKR018C\nYKR070W\nYMR252C\nYNL122C\nYNL320W\nYNR040W\nYPR024W\nYJL104W\nYMR267W\nYER019W\nYEL031W\nYDL066W\nYBL098W\nYJL060W\nYPL004C\nYGR086C\nYOR317W\nYNL073W\nYPR140W\nYMR089C\nYOR206W\nYKL085W\nYGR062C\nYER154W\nYOR316C\nYFR044C\nYKR087C\nYCL057W\nYLR389C\nYPL134C\nYOR222W\nYDR347W\nYPL118W\nYPL013C\nYDR337W\nYBR251W\nYMR158W\nYBR146W\nYNL137C\nYER050C\nYNR037C\nYIL093C\nYFR049W\nYDL045W-A\nYKL003C\nYNL306W\nYCR046C\nYKL167C\nYDR116C\nYNR022C\nYDL202W\nYKR006C\nYLR312W-A\nYHR147C\nYNL005C\nYKR085C\nYOR150W\nYDR462W\nYMR024W\nYKL138C\nYMR286W\nYBR122C\nYBR268W\nYML009C\nYLR439W\nYBL038W\nYJL096W\nYDR237W\nYJL063C\nYHR162W\nYHR024C\nYBL016W\nYKL113C\nYAL029C\nYKL067W\nYBR104W\nYKL196C\nYDL040C\nYML078W\nYNL135C\nYIR037W\nYPL206C\nYKL212W\nYBR200W\nYGR254W\nYNL055C\nYGR231C\nYGL011C\nYOL038W\nYFR004W\nYLR164W\nYNL121C\nYHR117W\nYIL022W\nYPL063W\nYHR005C-A\nYJL143W\nYNR017W\nYJR135W-A\nYPL154C\nYPL172C\nYNL292W\nYDR384C\nYGR012W\nYDR196C\nYOR356W\nYLR351C\nYER057C\nYOR196C\nYNR036C\nYNL081C\nYPL183W-A\nYOR125C\nYIL114C\nYKR049C\nYER178W\nYBR221C\nYOR347C\nYGL080W\nYOR004W\nYGR101W\nYDR236C\nYOL027C\nYCR008W\nYHR135C\nYJL109C\nYML008C\nYKL141W\nYKL148C\nYLL041C\nYDR178W\nYGR244C\nYJR010W\nYJR104C\nYHR008C\nYDR120C\nYER168C\nYLR105C\nYPL083C\nYHR003C\nYKR079C\nYKL182W\nYGR096W\nYLR043C\nYBL064C\nYDR353W\nYHR106W\nYOR286W\nYER086W\nYDL015C\nYBR003W\nYOR187W\nYLR291C\nYGR162W\nYAL035W\nYDL217C\nYDR074W\nYOR086C\nYNL256W\nYPL231W\nYBR084W\nYDR050C\nYDR268W\nYDL230W\nYOR065W\nYEL024W\nYPR191W\nYFR033C\nYDR529C\nYJL166W\nYLR290C\nYDR204W\nYOL008W\nYML021C\nYGR094W\nYGR285C" | sort -u | perl -nl -a -F"\t" -e 'print qq{$F[0]};BEGIN{print qq{gene};}'> genelist.csv
+cat ~/Scripts/pars/data/go.list |
+    sort -u |
+    perl -nl -a -F"\t" -e 'print qq{$F[0]};BEGIN{print qq{gene};}' \
+    > genelist.csv
 
 #generate strainlist, order same as egaz template
-cat ~/Scripts/pars/group_phylo.tsv | grep -v "^#" | cut -f 2 | tr "," "\n" | perl -nl -a -F"\t" -e 'print qq{$F[0]};BEGIN{print qq{S288c};}' > strainlist.tsv
+cat ~/Scripts/pars/group_phylo.tsv |
+    grep -v "^#" |
+    cut -f 2 |
+    tr "," "\n" |
+    perl -nl -a -F"\t" -e 'print qq{$F[0]};BEGIN{print qq{S288c};}' \
+    > strainlist.tsv
 
 tsv-join --z \
-    <(cat ~/data/mrna-structure/vcf/${NAME}_data_SNPs_PARS_mRNA.merge.wild.Chi.tsv | perl -nl -a -F"\t" -e 'print qq{$F[0]\t$F[6]\t$F[7]\t$F[8]\t$F[10]};') \
+    <(
+        cat ~/data/mrna-structure/vcf/${NAME}_data_SNPs_PARS_mRNA.merge.wild.Chi.tsv |
+        perl -nl -a -F"\t" -e 'print qq{$F[0]\t$F[6]\t$F[7]\t$F[8]\t$F[10]};'
+    ) \
     -f ../data_SNPs_PARS_mRNA.tsv \
     --key-fields 1 \
     --append-fields 2-63 \
-> data_SNPs_PARS_mRNA_all.tsv
+    > data_SNPs_PARS_mRNA_all.tsv
 
 rm data_SNPs_PARS_mRNA_filiter.tsv
-cat genelist.csv | while read i
-    do
+cat genelist.csv |
+    while read i; do
         export GENE=${i}
         cat data_SNPs_PARS_mRNA_all.tsv |
             perl -nl -a -F"\t" -e '
@@ -1353,22 +1384,23 @@ perl ~/Scripts/pars/program/subpop.pl data_SNPs_PARS_mRNA_filiter.tsv strainlist
 rm data_SNPs_PARS_mRNA_all.tsv
 
 tsv-join --z \
-    <(cat ~/data/mrna-structure/result/${NAME}/data_SNPs_PARS_syn.csv | sed 's/\"//g' \
-        | perl -nl -a -F"," -e '
-              next if /^location/;
-              if (($F[6]eq"stem")&&($F[11]eq"A->G"||$F[11]eq"A->C"||$F[11]eq"T->G"||$F[11]eq"T->C")) {
-                  my $F = join ("\t",@F);
-                  print qq{$F};
-              }
-              BEGIN{
-                  print qq{location\tfold_length\tgene_base\tgene_pos\tpars\tpair_base\tstructure\tstrand\tgene\tREF\tALT\tmutant_to\tfreq\toccured\tallele\tconsequence\tCDS_position\tamino_acids\tcodons\texisting_variation\tlength\tmF\tfold_dot_length\tfold_dot_vars\tfold_left_length\tfold_left_vars\tfold_right_length\tfold_right_vars\tstem_A_num\tstem_A_per\tstem_C_num\tstem_C_per\tstem_G_num\tstem_G_per\tstem_U_num\tstem_U_per\tloop_A_num\tloop_A_per\tloop_C_num\tloop_C_per\tloop_G_num\tloop_G_per\tloop_U_num\tloop_U_per\tA_num\tA_per\tC_num\tC_per\tG_num\tG_per\tU_num\tU_per\tstem_AU_num\tstem_CG_num\tloop_AU_num\tloop_CG_num\tAU_num\tCG_num\tstem_CG_content\tloop_CG_content\tCG_content\tX2\tP};
-              }
-          ') \
+    <(
+        cat ~/data/mrna-structure/result/${NAME}/data_SNPs_PARS_syn.csv |
+            sed 's/\"//g' |
+            perl -nl -a -F"," -e '
+                next if /^location/;
+                if (($F[6]eq"stem")&&($F[11]eq"A->G"||$F[11]eq"A->C"||$F[11]eq"T->G"||$F[11]eq"T->C")) {
+                    my $F = join ("\t",@F);
+                    print qq{$F};
+                }
+                BEGIN{
+                    print qq{location\tfold_length\tgene_base\tgene_pos\tpars\tpair_base\tstructure\tstrand\tgene\tREF\tALT\tmutant_to\tfreq\toccured\tallele\tconsequence\tCDS_position\tamino_acids\tcodons\texisting_variation\tlength\tmF\tfold_dot_length\tfold_dot_vars\tfold_left_length\tfold_left_vars\tfold_right_length\tfold_right_vars\tstem_A_num\tstem_A_per\tstem_C_num\tstem_C_per\tstem_G_num\tstem_G_per\tstem_U_num\tstem_U_per\tloop_A_num\tloop_A_per\tloop_C_num\tloop_C_per\tloop_G_num\tloop_G_per\tloop_U_num\tloop_U_per\tA_num\tA_per\tC_num\tC_per\tG_num\tG_per\tU_num\tU_per\tstem_AU_num\tstem_CG_num\tloop_AU_num\tloop_CG_num\tAU_num\tCG_num\tstem_CG_content\tloop_CG_content\tCG_content\tX2\tP};
+                }
+          '
+    ) \
     -f <(cat subpop.csv | csv2tsv) \
     --key-fields 1 \
     --append-fields 3-11 \
-> subpop.syn.tsv
+    > subpop.syn.tsv
 
 ```
-
-
