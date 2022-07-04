@@ -21,7 +21,7 @@ use List::Util qw/min max/;
 =head1 SYNOPSIS
 
     perl ~/Scripts/pars/program/count_structure_length_gene.pl --file ~/data/mrna-structure/process/${NAME}.gene_variation.process.yml --name ~/data/mrna-structure/result/${NAME}/mRNA.gene.list.csv --structure stem --output stem_length_mRNA.csv
-		
+
 =cut
 
 Getopt::Long::GetOptions(
@@ -44,33 +44,32 @@ $stopwatch->start_message("Process folding info...");
 print "Load $file\n";
 my $gene_info_of = YAML::Syck::LoadFile($file);
 
-my $csv_fh;
-open $csv_fh, '<', $name;
+open my $csv_fh, '<', $name;
 
-open OUT, '>', $output;
+open my $out_fh, '>', $output;
 
 while (<$csv_fh>) {
     chomp;
     s/"//g;
     my @snp = split /,/, $_;
-    
+
     if ( $snp[0] eq "gene" ) {
         my @snp_new;
         $snp_new[0] = "gene";
         $snp_new[1] = "max";
         for ( my $i = 1 ; $i <= 200 ; $i = $i + 1 ) {
-            $snp_new[$i+1] = $i,;
+            $snp_new[ $i + 1 ] = $i,;
         }
         my $snp = join ",", @snp_new;
-        open OUT, '>>', $output;
-        print OUT $snp, "\n";
+
+        print {$out_fh} $snp, "\n";
 
     }
     else {
         if ( $structure eq "stem" ) {
             my @snp_new;
             $snp_new[0] = $snp[0];
-             
+
             if ( grep ( $snp[0], keys %{$gene_info_of} ) )
             {    # $snp[0] represents snp in which gene
 
@@ -95,16 +94,18 @@ while (<$csv_fh>) {
                 }
 
                 foreach ( sort { $a <=> $b } keys %stem_length ) {
-                    $snp_new[$_+1] = $stem_length{$_};
+                    $snp_new[ $_ + 1 ] = $stem_length{$_};
                 }
-                my $max = max(keys %stem_length);
+                my $max = max( keys %stem_length );
                 $snp_new[1] = $max;
+
                 #print $max."\n";
-                for ( my $i = 1 ; $i <= 200 ; $i = $i + 1 ){
-                    $snp_new[$i+1] = 0 unless (defined($snp_new[$i+1]));                    
+                for ( my $i = 1 ; $i <= 200 ; $i = $i + 1 ) {
+                    $snp_new[ $i + 1 ] = 0
+                      unless ( defined( $snp_new[ $i + 1 ] ) );
                 }
             }
-           
+
             my $snp_processed = join ",", @snp_new;
 
             open OUT, '>>', $output;
@@ -114,7 +115,7 @@ while (<$csv_fh>) {
         else {
             my @snp_new;
             $snp_new[0] = $snp[0];
-            
+
             if ( grep ( $snp[0], keys %{$gene_info_of} ) )
             {    # $snp[0] represents snp in which gene
 
@@ -135,26 +136,27 @@ while (<$csv_fh>) {
                     $loop_length{$_}++;
                 }
                 foreach ( sort { $a <=> $b } keys %loop_length ) {
-                    $snp_new[$_+1] = $loop_length{$_};
+                    $snp_new[ $_ + 1 ] = $loop_length{$_};
                 }
-                my $max = max(keys %loop_length);
+                my $max = max( keys %loop_length );
                 $snp_new[1] = $max;
+
                 #print $max."\n";
-                for ( my $i = 1 ; $i <= 200 ; $i = $i + 1 ){
-                    $snp_new[$i+1] = 0 unless (defined($snp_new[$i+1]));                    
+                for ( my $i = 1 ; $i <= 200 ; $i = $i + 1 ) {
+                    $snp_new[ $i + 1 ] = 0
+                      unless ( defined( $snp_new[ $i + 1 ] ) );
                 }
-            }           
+            }
 
             my $snp_processed = join ",", @snp_new;
 
-            open OUT, '>>', $output;
-            print OUT $snp_processed, "\n";
+            print {$out_fh} $snp_processed, "\n";
 
         }
     }
 }
 
 close $csv_fh;
-close OUT;
+close $out_fh;
 
 __END__

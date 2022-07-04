@@ -1069,11 +1069,20 @@ unset NAME
 ```shell
 export NAME=Scer_n128_Spar
 cd ~/data/mrna-structure/result/${NAME}
-perl ~/Scripts/pars/program/count_codon_gene.pl --origin data_SNPs_PARS_syn.csv --output data_SNPs_PARS_syn_codon.csv
+
+perl ~/Scripts/pars/program/count_codon_gene.pl \
+    --origin data_SNPs_PARS_syn.csv \
+    --output data_SNPs_PARS_syn_codon.csv
+
 Rscript ~/Scripts/pars/program/count_AT_GC_codon.R -n ${NAME}
+
 for AREA  in tRNA 4D; do
-    perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_each/PARS_${AREA}_stat.csv --output freq_each/PARS_${AREA}_stat_chi_square.csv
-    perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl --file freq_10/PARS_${AREA}_stat_freq_10.csv --output freq_10/PARS_${AREA}_stat_freq_10_chi_square.csv
+    perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl \
+        --file freq_each/PARS_${AREA}_stat.csv \
+        --output freq_each/PARS_${AREA}_stat_chi_square.csv
+    perl ~/Scripts/pars/program/count_stem_loop_chi_square.pl \
+        --file freq_10/PARS_${AREA}_stat_freq_10.csv \
+        --output freq_10/PARS_${AREA}_stat_freq_10_chi_square.csv
 done
 
 unset NAME

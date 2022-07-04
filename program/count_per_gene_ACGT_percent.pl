@@ -33,10 +33,9 @@ Getopt::Long::GetOptions(
     'output|o=s' => \my $output,
 ) or Getopt::Long::HelpMessage(1);
 
-my $csv_fh;
-open $csv_fh, '<', $file;
+open my $csv_fh, '<', $file;
 
-open OUT, '>', $output;
+open my $out_fh, '>', $output;
 
 my %mutation_AT_GC =
   ( 'A->C' => 0, 'A->G' => 0, 'T->C' => 0, 'T->G' => 0 );    #A/T->G/C
@@ -65,13 +64,13 @@ while (<$csv_fh>) {
         $content_new[4] = "loop_AT_GC";
         $content_new[5] = "loop_GC_AT";
         $content_new[6] = "loop_total";
+
         #$content_new[7] = "stem_AT_GC_ratio";
         #$content_new[8] = "loop_AT_GC_ratio";
         #$content_new[9] = "X2";
         #$content_new[10] = "p_value";
         my $content_new = join ",", @content_new;
-        open OUT,'>>',$output;
-        print OUT $content_new, "\n";
+        print {$out_fh} $content_new, "\n";
 
     }
     else {
@@ -84,8 +83,9 @@ while (<$csv_fh>) {
                 }
                 elsif ( exists $mutation_GC_AT{ $content[11] } ) {
                     $count_SNPs{'stem_GC_AT'} += 1;
-                }elsif ( exists $mutation_other{ $content[11] } ) {
-                	  $count_SNPs{'stem_other'} += 1;
+                }
+                elsif ( exists $mutation_other{ $content[11] } ) {
+                    $count_SNPs{'stem_other'} += 1;
                 }
             }
             else {
@@ -94,8 +94,9 @@ while (<$csv_fh>) {
                 }
                 elsif ( exists $mutation_GC_AT{ $content[11] } ) {
                     $count_SNPs{'loop_GC_AT'} += 1;
-                }elsif ( exists $mutation_other{ $content[11] } ) {
-                	  $count_SNPs{'loop_other'} += 1;
+                }
+                elsif ( exists $mutation_other{ $content[11] } ) {
+                    $count_SNPs{'loop_other'} += 1;
                 }
             }
 
@@ -122,8 +123,9 @@ while (<$csv_fh>) {
                 }
                 elsif ( exists $mutation_GC_AT{ $content[11] } ) {
                     $count_SNPs{'stem_GC_AT'} += 1;
-                }elsif ( exists $mutation_other{ $content[11] } ) {
-                	  $count_SNPs{'stem_other'} += 1;
+                }
+                elsif ( exists $mutation_other{ $content[11] } ) {
+                    $count_SNPs{'stem_other'} += 1;
                 }
             }
             elsif ( $content[6] eq "loop" ) {
@@ -132,8 +134,9 @@ while (<$csv_fh>) {
                 }
                 elsif ( exists $mutation_GC_AT{ $content[11] } ) {
                     $count_SNPs{'loop_GC_AT'} += 1;
-                }elsif ( exists $mutation_other{ $content[11] } ) {
-                	  $count_SNPs{'loop_other'} += 1;
+                }
+                elsif ( exists $mutation_other{ $content[11] } ) {
+                    $count_SNPs{'loop_other'} += 1;
                 }
             }
 
@@ -172,7 +175,7 @@ foreach my $keys ( sort keys %gene_name ) {
 #    if ( $loop_AT_GC + $loop_GC_AT + $loop_other!= 0 ) {
 #        $loop_AT_GC_ratio = $loop_AT_GC / ( $loop_AT_GC + $loop_GC_AT + $loop_other);
 #    }
-    
+
     if ( $stem_AT_GC + $loop_AT_GC != 0 ) {
         $stem_AT_GC_ratio = $stem_AT_GC / ( $stem_AT_GC + $loop_AT_GC );
     }
@@ -181,7 +184,7 @@ foreach my $keys ( sort keys %gene_name ) {
     }
 
     my $obs = [ [ $stem_AT_GC, $stem_GC_AT ], [ $loop_AT_GC, $loop_GC_AT ] ];
-    my $chi = new Statistics::ChisqIndep;
+    my $chi = Statistics::ChisqIndep->new;
     $chi->load_data($obs);
     $chi->print_summary();
     my $chisq = ${$chi}{'chisq_statistic'};
@@ -193,17 +196,17 @@ foreach my $keys ( sort keys %gene_name ) {
     $content_new[4] = $loop_AT_GC;
     $content_new[5] = $loop_GC_AT;
     $content_new[6] = $loop_total;
+
     #$content_new[7] = $stem_AT_GC_ratio;
     #$content_new[8] = $loop_AT_GC_ratio;
     #$content_new[9] = $chisq;
     #$content_new[10] = $P;
 
     my $content_new = join ",", @content_new;
-    open OUT,'>>',$output;;
-    print OUT $content_new, "\n";
+    print {$out_fh} $content_new, "\n";
 }
 
 close $csv_fh;
-close OUT;
+close $out_fh;
 
 __END__
