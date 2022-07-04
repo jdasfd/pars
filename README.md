@@ -354,6 +354,15 @@ blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignm
 perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
 # --view/-m INT: blast output format, same as `blastall -m`
 # 0 => Pairwise
+# -f <file>: blast output file name
+# output: <file>.tsv, <file>.tsv.skip
+# <file>.tsv contains:
+# col1: query, col2: length, col3: chrom, col4: hit_start, col5: hit_end, col6: strand(+/-)
+# <file>.tsv.skip contains:
+# col1: query, col2: length, col3: chrom, col4: coverage, col5: HSP_identity
+# Using the Bio::Search::SearchUtils for HSP
+# HSP: A High-scoring Segment Pair (HSP) is a local alignment with no gaps
+# that achieves one of the highest alignment scores in a given search
 
 ```
 
@@ -382,8 +391,7 @@ cat ../sgd/saccharomyces_cerevisiae.gff |
 # extract mRNAs and their positions from gff
 # output format: 2 cols for anno (col1) and pos (col2)
 # spanr gff would not keep annotation names
-# in the .gff, some mRNAs were alternative transcripts
-# thus ID=(.*)_mRNA will only keep the mRNA without other transcripts
+# remove alternative scripts and change to gene
 
 mkdir -p genes
 cat gene_list.csv |
@@ -398,7 +406,7 @@ rm -fr genes
 cut -d, -f 2 gene_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
 # -m, --minimum <minimum>: Set the minimum depth of coverage [default: 1]
-# the point of position which covered twice will be kept
+# the point of position which covered twice on chromosomes will be kept
 
 spanr statop \
     ../blast/S288c.sizes \
@@ -411,6 +419,7 @@ spanr statop \
     > non-overlapped.lst
 # spanr statop: Coverage on chrosomes for one YAML crossed another
 # --all: Only write whole genome stats
+# extract those genes without overlapped regions
 
 # PARS genes
 cat non-overlapped.lst |
