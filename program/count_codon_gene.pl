@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 use strict;
-#use warnings;
+use warnings;
 use autodie;
 
 use Getopt::Long qw();
@@ -25,9 +25,9 @@ use List::Util qw/min/;
 =cut
 
 Getopt::Long::GetOptions(
-    'help|?'     => sub { Getopt::Long::HelpMessage(0) },
-    'origin|or=s'   => \my $origin,
-    'output|o=s' => \my $output,
+    'help|?'      => sub { Getopt::Long::HelpMessage(0) },
+    'origin|or=s' => \my $origin,
+    'output|o=s'  => \my $output,
 ) or Getopt::Long::HelpMessage(1);
 
 #----------------------------------------------------------#
@@ -40,10 +40,9 @@ $stopwatch->start_message("Process codon info...");
 # start update
 #----------------------------------------------------------#
 
-my $csv_fh;
-open $csv_fh,'<',$origin;
+open my $csv_fh, '<', $origin;
 
-open OUT,'>',$output;
+open my $out_fh, '>', $output;
 
 while (<$csv_fh>) {
     chomp;
@@ -51,55 +50,55 @@ while (<$csv_fh>) {
     my @snp = split /,/, $_;
 
     if ( $snp[8] eq "gene" ) {
-    
+
         splice @snp, 19, 0, "Codon_pos";
         my $snp = join ",", @snp;
 
-        open OUT,'>>',$output;
+        open OUT, '>>', $output;
         print OUT $snp, "\n";
 
     }
     else {
-				
-				my @codon = split "/", $snp[18] if defined( $snp[18] );
-				my @mutant = split "->", $snp[11] if defined( $snp[11] );
-				my $codon_to;
-				my $codon_pos;
-            
-        if ( $snp[7] eq '+' ){
-            if ($codon[0] =~ m/$mutant[0]/){
-                $codon_to = "$codon[0]->$codon[1]";
-                $codon_pos=index($codon[0],$mutant[0]);
-            }else{
-                $codon_to = "$codon[1]->$codon[0]";
-                $codon_pos=index($codon[1],$mutant[0]);
+
+        my @codon  = split "/",  $snp[18] if defined( $snp[18] );
+        my @mutant = split "->", $snp[11] if defined( $snp[11] );
+        my $codon_to;
+        my $codon_pos;
+
+        if ( $snp[7] eq '+' ) {
+            if ( $codon[0] =~ m/$mutant[0]/ ) {
+                $codon_to  = "$codon[0]->$codon[1]";
+                $codon_pos = index( $codon[0], $mutant[0] );
             }
-        }else{
-        	  $mutant[0] =~ tr/ATGC/TACG/;
-        	  $mutant[1] =~ tr/ATGC/TACG/;
-            if ($codon[0] =~ m/$mutant[0]/){
-                $codon_to = "$codon[0]->$codon[1]";
-                $codon_pos=index($codon[0],$mutant[0]);
-            }else{
-                $codon_to = "$codon[1]->$codon[0]";
-                $codon_pos=index($codon[1],$mutant[0]);
-            }        	                 	
+            else {
+                $codon_to  = "$codon[1]->$codon[0]";
+                $codon_pos = index( $codon[1], $mutant[0] );
+            }
+        }
+        else {
+            $mutant[0] =~ tr/ATGC/TACG/;
+            $mutant[1] =~ tr/ATGC/TACG/;
+            if ( $codon[0] =~ m/$mutant[0]/ ) {
+                $codon_to  = "$codon[0]->$codon[1]";
+                $codon_pos = index( $codon[0], $mutant[0] );
+            }
+            else {
+                $codon_to  = "$codon[1]->$codon[0]";
+                $codon_pos = index( $codon[1], $mutant[0] );
+            }
         }
         $codon_to = uc($codon_to);
-        
+
         splice @snp, 18, 1, $codon_to if defined( $snp[18] );
         splice @snp, 19, 0, $codon_pos;
         my $snp = join ",", @snp;
-        
-        
-        open OUT,'>>',$output;
-        print OUT $snp, "\n";
 
+        print {$out_fh} $snp, "\n";
 
     }
 }
 
 close $csv_fh;
-close OUT;
+close $out_fh;
 
 __END__
