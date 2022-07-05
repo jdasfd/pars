@@ -388,11 +388,13 @@ cat ../sgd/saccharomyces_cerevisiae.gff |
         print join qq{,}, $ID, qq{$chr($F[6]):$F[3]-$F[4]};
     ' \
     > gene_list.csv
-# extract mRNAs and their positions from gff
+# extract names of mRNA and their positions from gff
 # output format: 2 cols for anno (col1) and pos (col2)
 # spanr gff would not keep annotation names
-# remove alternative scripts and change to gene
+# new gff contains alternative transcripts, so the gene used instead of mRNA
 
+# convert gene_list.csv into a runlist
+# runlist could be dealt by using spanr in intspan
 mkdir -p genes
 cat gene_list.csv |
     parallel --colsep ',' --no-run-if-empty --linebuffer -k -j 12 '
@@ -407,6 +409,7 @@ cut -d, -f 2 gene_list.csv |
     spanr coverage -m 2 stdin -o overlapped.yml
 # -m, --minimum <minimum>: Set the minimum depth of coverage [default: 1]
 # the point of position which covered twice on chromosomes will be kept
+# actually meaning ranges with more than 1 genes
 
 spanr statop \
     ../blast/S288c.sizes \
@@ -419,7 +422,8 @@ spanr statop \
     > non-overlapped.lst
 # spanr statop: Coverage on chrosomes for one YAML crossed another
 # --all: Only write whole genome stats
-# extract those genes without overlapped regions
+# $F[4] means the col5 - overlappedSize
+# so non-overlapped.lst contains all genes without overlapping
 
 # PARS genes
 cat non-overlapped.lst |
@@ -472,6 +476,9 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
     >&2 echo "==> ${NAME}"
     fasops covers -n S288c ${NAME}.fas.gz -o ${NAME}.yml
 done
+# fasops covers [options] <infile> [more infiles]
+# Scan blocked fasta files and output covers on chromosomes.
+# --name,-n: Only output this species
 
 # intact mRNAs
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -486,6 +493,8 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         ' \
         > ${NAME}.intact.lst
 done
+# $F[2] == $F[4]: size == overlappedSize
+# so this step would give out all intact mRNAs
 
 wc -l *.lst ../blast/*.tsv* |
     grep -v "total$" |
