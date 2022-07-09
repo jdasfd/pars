@@ -123,6 +123,9 @@ cat ASSEMBLY/rsync.tsv |
 
 ```
 
+- Spar: Saccharomyces paradoxus
+- Seub: Saccharomyces eubayanus FM1318 Chromosome
+
 ### Strains from NCBI WGS
 
 ```shell
@@ -530,6 +533,12 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
            fasops slice ${NAME}.fas.gz PARS/{}.yml -n S288c -o PARS_${NAME}/{}.fas
         "
 done
+# fasops slice [options] <infile> <runlist.yml>
+# Extract alignment slices from a blocked fasta.
+# <infiles> are paths to axt files, .axt.gz is supported
+# <runlist.yml> is a App::RL dump
+# --name,-n STR: According to this species. Default is the first one
+# This step will
 
 # SNP list
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -577,6 +586,7 @@ gzip -dcf 1011Matrix.gvcf.gz |
     grep -v "^#" |
     tsv-select -f 1-8 \
     > 1011Matrix.tsv
+# pv
 
 cat 1011Matrix.tsv |
     perl -nla -F"\t" -e '
