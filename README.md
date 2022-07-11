@@ -431,6 +431,7 @@ cat gene_list.csv |
     '
 spanr merge genes/*.yml -o genes.merge.yml
 rm -fr genes
+# spanr cover will convert ranges in .csv into .yml
 
 # overlapped regions
 cut -d, -f 2 gene_list.csv |
@@ -450,7 +451,7 @@ spanr statop \
     > non-overlapped.lst
 # spanr statop: Coverage on chrosomes for one YAML crossed another
 # --all: Only write whole genome stats
-# $F[4] means the col5 - overlappedSize
+# $F[4] means the col5 - overlappedSize from genes.merge.yml to overlapped.yml
 # so non-overlapped.lst contains all genes without overlapping
 
 # PARS genes
@@ -482,6 +483,7 @@ spanr some genes.merge.yml PARS-non-overlapped.lst -o genes.non-overlapped.yml
 
 spanr some PARS.merge.yml PARS-non-overlapped.lst -o PARS.non-overlapped.yml
 spanr split PARS.non-overlapped.yml -o PARS
+# split .yml for each gene
 
 ```
 
@@ -507,6 +509,8 @@ done
 # fasops covers [options] <infile> [more infiles]
 # Scan blocked fasta files and output covers on chromosomes.
 # --name,-n: Only output this species
+# *_refined dirs contained blocked fasta of multi-genomes alignment
+# the step would show multi-aligned seqs on S288c in runlist .yml
 
 # intact mRNAs
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -521,8 +525,7 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         ' \
         > ${NAME}.intact.lst
 done
-# $F[2] == $F[4]: size == overlappedSize
-# so this step would give out all intact mRNAs
+# $F[2] == $F[4]: size == overlappedSize, meaning intact mRNA
 
 wc -l *.lst ../blast/*.tsv* |
     grep -v "total$" |
@@ -563,7 +566,7 @@ done
 # <infiles> are paths to axt files, .axt.gz is supported
 # <runlist.yml> is a App::RL dump
 # --name,-n STR: According to this species. Default is the first one
-# This step will give out all PARS
+# This step will give out all PARS alignment results in fasta format
 
 # SNP list
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
@@ -582,6 +585,11 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         tsv-select -f 5,6,7,9,10,8,14 \
         > ${NAME}.SNPs.tsv
 done
+# fasops vars [options] <infile>
+# List substitutions
+# * <infiles> are paths to axt files, .fas.gz is supported
+# --outgroup: alignments have an outgroup
+# --nocomplex: omit complex
 
 wc -l *.SNPs.tsv |
     grep -v "total$" |
@@ -611,7 +619,9 @@ gzip -dcf 1011Matrix.gvcf.gz |
     grep -v "^#" |
     tsv-select -f 1-8 \
     > 1011Matrix.tsv
-# pv
+# pv is a terminal-based (command-line based) tool in Linux that allows us for the monitoring of data being sent through pipe.
+# pv helps the user by giving him a visual display of the following
+# especially when .gz is a large file, pv could show the process
 
 cat 1011Matrix.tsv |
     perl -nla -F"\t" -e '
