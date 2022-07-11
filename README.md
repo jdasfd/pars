@@ -66,6 +66,30 @@ find . -name "*.gz" |
 
 ```
 
+- `sce_genes.fasta.gz`:
+
+    Reference transcriptome
+
+- `sce_transcriptome_global.tab.gz`:
+
+    Global coordinates of transcribed genes. File has 5 columns in the following format: Gene ID (column 1), Chromosome (column 2), Feature start position (column 3), Feature end position (column 4), Feature type (column 5, "Transcript" covers the entire transcript, "5UTR" and "3UTR" denote untranslated areas, "Exon" denotes coding exon and could occur more than once for a given gene in case the gene is spliced).
+
+- `sce_transcriptome_local.tab.gz`:
+
+    Local coordinates of transcribed genes. File has 4 columns in the following format: Gene ID (column 1), Feature type (column 2, "Transcript" always starts at 1 and covers the entire transcript, "5UTR" and "3UTR" annotate untranslated regions, "CDS" annotates the coding sequence), Feature start position (column 3), Feature end position (column 4).
+
+- `sce_V1.tab.gz`, `sce_S1.tab.gz`, `sce_Score.tab.gz`:
+
+    Structural profiles. Files have 3 columns in the following format: Gene ID (column 1), Gene length (column 2), Data (column 3, semicolon separated, representing either the PARS score or the raw number of reads obtained for each base).
+
+- `sce_genes_folded.tab.gz`:
+
+    PARS-assisted folding. File has 3 columns in the following format: Gene ID (column 1), sequence (column 2) and PARS-assisted folding (column 3, in bracket notation).
+
+- `sce_peak_overlap.tab.gz`:
+
+    List of nucleotides showing strong peaks in both V1- and S1-treated samples. File has 3 columns in the following format: Gene ID (column 1), number of peaks (column 2), genomic location in local transcript coordinates of the peaks (column 3, semicolon separated).
+
 ### SGD
 
 ```shell
@@ -352,6 +376,7 @@ blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignm
 #     Apply filtering locations as soft masks
 #     Default = `true`
 # soft_masking is the step to avoid using repeated sequences
+# note that query is from
 
 # parse blastn output
 perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
@@ -538,7 +563,7 @@ done
 # <infiles> are paths to axt files, .axt.gz is supported
 # <runlist.yml> is a App::RL dump
 # --name,-n STR: According to this species. Default is the first one
-# This step will
+# This step will give out all PARS
 
 # SNP list
 for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
