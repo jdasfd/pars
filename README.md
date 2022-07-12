@@ -590,6 +590,8 @@ done
 # * <infiles> are paths to axt files, .fas.gz is supported
 # --outgroup: alignments have an outgroup
 # --nocomplex: omit complex
+# Output example:
+# I:137679        T       C       T->C    6       TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCTTTTTCCTTTTCCCTTTTTTTTTTTTT       YAL007C
 
 wc -l *.SNPs.tsv |
     grep -v "total$" |
@@ -621,7 +623,7 @@ gzip -dcf 1011Matrix.gvcf.gz |
     > 1011Matrix.tsv
 # pv is a terminal-based (command-line based) tool in Linux that allows us for the monitoring of data being sent through pipe.
 # pv helps the user by giving him a visual display of the following
-# especially when .gz is a large file, pv could show the process
+# especially when .gz is a large file, pv could show the process, avoiding if there were any mistake
 
 cat 1011Matrix.tsv |
     perl -nla -F"\t" -e '
@@ -666,6 +668,8 @@ cat 1011Matrix.tsv |
     ' \
     > 1011Matrix.ext.tsv
 cut -f 1 1011Matrix.ext.tsv > 1011Matrix.ext.txt
+# $R and $A both == 1 meaning only SNP included
+# $ALT_vcf / ($REF_vcf + $ALT_vcf) = $Freq_vcf
 
 # wild strains in 1011
 #perl -pi -e '
@@ -682,6 +686,15 @@ SACE_YCY,BAN,BAP,CMP,CCH,ACC,CCC,CCD,CCE,CCF,\
 CCG,CCI,CMQ,CDF,CDG,CDH,CDI,AVI,ACD,ANF,\
 ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
     bcftools +fill-tags -o 1011Matrix.wild.gvcf
+# bcftools view
+# VCF/BCF conversion, view, subset and filter VCF/BCF files.
+# bcftools view [options] <in.vcf.gz> [region1 [...]]
+# -s, --samples [^]LIST: Comma separated list of samples to include (or exclude with "^" prefix)
+
+# bcftools +fill-tags
+# Set INFO tags AF, AC, AC_Hemi, AC_Hom, AC_Het, AN, ExcHet, HWE, MAF, NS FORMAT tag VAF, custom INFO/TAG=func(FMT/TAG).
+# bcftools +fill-tags [General Options] -- [Plugin Options]
+# bcftools +fill-tags -- -l could print a detailed list of available tags
 
 cat 1011Matrix.wild.gvcf |
     perl -nla -F"\t" -e '
@@ -778,6 +791,11 @@ for NAME in Scer_n7_Spar Scer_n7p_Spar Scer_n128_Spar Scer_n128_Seub; do
         ' \
         > ${NAME}.upload.tsv
 done
+# datamash check results:
+#26584 lines, 7 fields
+#34959 lines, 7 fields
+#44058 lines, 7 fields
+#27207 lines, 7 fields
 
 wc -l *.upload.tsv |
     grep -v "total$" |
@@ -889,6 +907,7 @@ cat ../sgd/orf_coding_all.fasta |
         printf qq{%s:%s\n}, $chr, $hole->as_string if $hole->is_not_empty;
     ' |
     spanr cover stdin -o sce_intron.yml
+# $intspan->holes will give out the rest of the coding range
 
 # produce orf_genomic set
 cat ../sgd/orf_genomic_all.fasta |
