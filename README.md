@@ -376,7 +376,7 @@ blastn -task blastn -evalue 1e-3 -num_threads 4 -num_descriptions 10 -num_alignm
 #     Apply filtering locations as soft masks
 #     Default = `true`
 # soft_masking is the step to avoid using repeated sequences
-# note that query is from
+# note that query is from PARS
 
 # parse blastn output
 perl ~/Scripts/pars/blastn_transcript.pl -f sce_genes.blast -m 0
@@ -590,8 +590,6 @@ done
 # * <infiles> are paths to axt files, .fas.gz is supported
 # --outgroup: alignments have an outgroup
 # --nocomplex: omit complex
-# Output example:
-# I:137679        T       C       T->C    6       TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTCTTTTTCCTTTTCCCTTTTTTTTTTTTT       YAL007C
 
 wc -l *.SNPs.tsv |
     grep -v "total$" |
@@ -696,6 +694,8 @@ ANH,ANC,ANE,ANG,AND,ANK,ANI,AKN,SACE_YBS,SACE_YCU |
 # bcftools +fill-tags [General Options] -- [Plugin Options]
 # bcftools +fill-tags -- -l could print a detailed list of available tags
 
+# only lines started with ## were excluded
+# so headline #CHROM... was kept in 1011Matrix.wild.tsv but was absent in 1011Matrix.tsv
 cat 1011Matrix.wild.gvcf |
     perl -nla -F"\t" -e '
         /^\#\#/ and next;
